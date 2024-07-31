@@ -1,0 +1,33 @@
+name: suite
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  bip39: ^1.0.6
+  simple_rc4: ^0.3.0
+  wallet: ^0.0.13
+  web3dart: ^2.7.3
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.png
+    - assets/images/logo1.png
+    - assets/images/logo2.png
+    - assets/images/logo3.png
+    - assets/images/sui.png
