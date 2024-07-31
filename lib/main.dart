@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 import 'create_new.dart';
 import 'import_screen.dart';
-import 'dart:convert';
-import 'dart:math';
-import 'package:bip39/bip39.dart' as bip39;
-import 'package:crypto/crypto.dart';
-import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart' as http;
-import 'package:simple_rc4/simple_rc4.dart';
+
 
 void main() {
   runApp(const MyApp());

@@ -1,7 +1,64 @@
 import 'package:flutter/material.dart';
 import 'next_screen.dart';
-class CreateNewScreen extends StatelessWidget {
+import 'dart:convert';
+import 'dart:math';
+import 'package:bip39/bip39.dart' as bip39;
+import 'package:crypto/crypto.dart';
+import 'package:web3dart/web3dart.dart';
+import 'package:http/http.dart' as http;
+import 'package:simple_rc4/simple_rc4.dart';
+
+class CreateNewScreen extends StatefulWidget {
   const CreateNewScreen({super.key});
+
+  @override
+  _CreateNewScreenState createState() => _CreateNewScreenState();
+}
+
+class _CreateNewScreenState extends State<CreateNewScreen> {
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _validateAndNavigate() {
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (password.isEmpty || confirmPassword.isEmpty) {
+      setState(() {
+        _errorText = 'Please fill in both fields';
+      });
+      return;
+    }
+
+    if (password != confirmPassword) {
+      setState(() {
+        _errorText = 'Passwords do not match';
+      });
+      return;
+    }
+
+    setState(() {
+      _errorText = null;
+    });
+
+    // Generate 12-word mnemonic
+    final mnemonic = bip39.generateMnemonic();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NextScreen(mnemonic: mnemonic),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +171,7 @@ class CreateNewScreen extends StatelessWidget {
                                     ),
                                   ),
                                   TextField(
+                                    controller: _passwordController,
                                     decoration: InputDecoration(
                                       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                                       hintText: 'Please enter the password',
@@ -123,6 +181,7 @@ class CreateNewScreen extends StatelessWidget {
                                       border: InputBorder.none,
                                     ),
                                     style: const TextStyle(color: Colors.white),
+                                    obscureText: true,
                                   ),
                                 ],
                               ),
@@ -152,6 +211,7 @@ class CreateNewScreen extends StatelessWidget {
                                     ),
                                   ),
                                   TextField(
+                                    controller: _confirmPasswordController,
                                     decoration: InputDecoration(
                                       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                                       hintText: 'Re-enter the same password',
@@ -161,22 +221,25 @@ class CreateNewScreen extends StatelessWidget {
                                       border: InputBorder.none,
                                     ),
                                     style: const TextStyle(color: Colors.white),
+                                    obscureText: true,
                                   ),
                                 ],
                               ),
+                              if (_errorText != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: Text(
+                                    _errorText!,
+                                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
                               const SizedBox(height: 40),
                               Center(
                                 child: SizedBox(
                                   width: screenWidth * 0.5,
                                   child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => const NextScreen(),
-                                        ),
-                                      );
-                                    },
+                                    onPressed: _validateAndNavigate,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
                                       foregroundColor: const Color(0xFF007AFF),

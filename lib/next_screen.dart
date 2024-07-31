@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:bip39/bip39.dart' as bip39;
+import 'package:web3dart/web3dart.dart'; // Make sure web3dart is included in pubspec.yaml
+import 'dart:typed_data';
+import 'package:wallet/wallet.dart' as wallet;
 import 'edit_screen.dart';
+
 class NextScreen extends StatelessWidget {
-  const NextScreen({super.key});
+  final String mnemonic;
+
+  const NextScreen({required this.mnemonic, super.key});
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final mnemonicWords = mnemonic.split(' ');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -26,20 +33,18 @@ class NextScreen extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Изображение на заднем плане
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
               padding: const EdgeInsets.only(right: 5, bottom: 16),
               child: Image.asset(
                 'assets/images/logo3.png',
-                width: screenWidth * 0.4,
-                height: screenWidth * 0.4,
+                width: MediaQuery.of(context).size.width * 0.4,
+                height: MediaQuery.of(context).size.width * 0.4,
                 fit: BoxFit.contain,
               ),
             ),
           ),
-          // Основное содержимое экрана
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -97,7 +102,7 @@ class NextScreen extends StatelessWidget {
                                   crossAxisSpacing: 10,
                                   mainAxisSpacing: 10,
                                 ),
-                                itemCount: 12,
+                                itemCount: mnemonicWords.length,
                                 itemBuilder: (context, index) {
                                   return Container(
                                     decoration: BoxDecoration(
@@ -107,7 +112,7 @@ class NextScreen extends StatelessWidget {
                                     padding: const EdgeInsets.symmetric(horizontal: 10),
                                     alignment: Alignment.centerLeft,
                                     child: Text(
-                                      '${index + 1}. ',
+                                      '${index + 1}. ${mnemonicWords[index]}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -124,13 +129,15 @@ class NextScreen extends StatelessWidget {
                                     child: Padding(
                                       padding: const EdgeInsets.only(right: 10),
                                       child: ElevatedButton.icon(
-                                        onPressed: () {},
+                                        onPressed: () {
+                                          // Добавьте функциональность для копирования в буфер обмена
+                                        },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.transparent, // Прозрачный фон
+                                          backgroundColor: Colors.transparent,
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(6),
-                                            side: BorderSide(color: Colors.white), // Белый контур
+                                            side: BorderSide(color: Colors.white),
                                           ),
                                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                         ),
@@ -142,7 +149,7 @@ class NextScreen extends StatelessWidget {
                                             fontSize: 14,
                                           ),
                                           maxLines: 1,
-                                          overflow: TextOverflow.visible, // Обеспечиваем видимость текста
+                                          overflow: TextOverflow.visible,
                                         ),
                                       ),
                                     ),
@@ -154,7 +161,7 @@ class NextScreen extends StatelessWidget {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => const EditScreen(),
+                                            builder: (context) => EditScreen(mnemonic: mnemonic,),
                                           ),
                                         );
                                       },
@@ -172,7 +179,7 @@ class NextScreen extends StatelessWidget {
                                           fontSize: 14,
                                         ),
                                         maxLines: 1,
-                                        overflow: TextOverflow.visible, // Обеспечиваем видимость текста
+                                        overflow: TextOverflow.visible,
                                       ),
                                     ),
                                   ),
@@ -193,4 +200,30 @@ class NextScreen extends StatelessWidget {
       ),
     );
   }
+
+  Uint8List _derivePrivateKey(Uint8List seed) {
+    final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
+    final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
+    return _bigIntToUint8List(derivedKey.key);
+  }
+
+  Uint8List _bigIntToUint8List(BigInt bigInt) {
+    return bigIntToBytes(bigInt);
+  }
+
+  Uint8List bigIntToBytes(BigInt number) {
+    number = number.isNegative ? -number : number;
+    int bytesNeeded = (number.bitLength + 7) >> 3;
+    var byteList = Uint8List(bytesNeeded);
+    var byteData = ByteData.sublistView(byteList);
+
+    for (int i = 0; i < bytesNeeded; i++) {
+      byteData.setUint8(bytesNeeded - i - 1, number.toUnsigned(8).toInt());
+      number = number >> 8;
+    }
+
+    return byteList;
+  }
+
+
 }
