@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:bip39/bip39.dart' as bip39;
-import 'package:web3dart/web3dart.dart'; // Make sure web3dart is included in pubspec.yaml
+import 'package:web3dart/web3dart.dart'; // Ensure web3dart is included in pubspec.yaml
 import 'dart:typed_data';
 import 'package:wallet/wallet.dart' as wallet;
 import 'edit_screen.dart';
 
 class NextScreen extends StatelessWidget {
   final String mnemonic;
+  final String password;
 
-  const NextScreen({required this.mnemonic, super.key});
+  const NextScreen({required this.mnemonic, required this.password, super.key});
 
   @override
   Widget build(BuildContext context) {
     final mnemonicWords = mnemonic.split(' ');
+
+    // Log wallet information when the widget is built
+    print('Mnemonic: $mnemonic');
+    print('Private Key: ${_privateKeyToHex(_generatePrivateKey())}');
+    print('Public Key: ${_generatePublicKey()}');
+    print('Address: ${_generateAddress()}');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -130,7 +137,7 @@ class NextScreen extends StatelessWidget {
                                       padding: const EdgeInsets.only(right: 10),
                                       child: ElevatedButton.icon(
                                         onPressed: () {
-                                          // Добавьте функциональность для копирования в буфер обмена
+                                          // Add functionality to copy to clipboard
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.transparent,
@@ -161,7 +168,13 @@ class NextScreen extends StatelessWidget {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => EditScreen(mnemonic: mnemonic,),
+                                            builder: (context) => EditScreen(
+                                              mnemonic: mnemonic,
+                                              password: password,
+                                              privateKey: _privateKeyToHex(_generatePrivateKey()),
+                                              publicKey: _generatePublicKey(),
+                                              address: _generateAddress(),
+                                            ),
                                           ),
                                         );
                                       },
@@ -201,10 +214,38 @@ class NextScreen extends StatelessWidget {
     );
   }
 
-  Uint8List _derivePrivateKey(Uint8List seed) {
+  Uint8List _generatePrivateKey() {
+    final seed = bip39.mnemonicToSeed(mnemonic);
     final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
     final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
-    return _bigIntToUint8List(derivedKey.key);
+    final privateKey = _bigIntToUint8List(derivedKey.key);
+
+    print('Generated Private Key: ${_privateKeyToHex(privateKey)}'); // Log private key
+    print('Generated Seed: ${_seedToHex(seed)}'); // Log private key
+    return privateKey;
+  }
+  String _seedToHex(Uint8List seed) {
+    return seed.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+  }
+  String _generatePublicKey() {
+    final privateKey = EthPrivateKey.fromHex(_privateKeyToHex(_generatePrivateKey()));
+    final publicKey = privateKey.publicKey;
+
+    print('Generated Public Key: $publicKey'); // Log public key
+    return publicKey.toString();
+  }
+
+  String _generateAddress() {
+    final privateKey = EthPrivateKey.fromHex(_privateKeyToHex(_generatePrivateKey()));
+    final address = privateKey.address.hex;
+
+    print('Generated Address: $address'); // Log address
+    return address;
+  }
+
+  String _privateKeyToHex(Uint8List privateKey) {
+    final hex = privateKey.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+    return hex;
   }
 
   Uint8List _bigIntToUint8List(BigInt bigInt) {
@@ -224,6 +265,4 @@ class NextScreen extends StatelessWidget {
 
     return byteList;
   }
-
-
 }

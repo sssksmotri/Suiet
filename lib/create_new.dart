@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'next_screen.dart';
-import 'dart:convert';
-import 'dart:math';
+
 import 'package:bip39/bip39.dart' as bip39;
-import 'package:crypto/crypto.dart';
-import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart' as http;
-import 'package:simple_rc4/simple_rc4.dart';
+
 
 class CreateNewScreen extends StatefulWidget {
   const CreateNewScreen({super.key});
@@ -18,6 +14,7 @@ class CreateNewScreen extends StatefulWidget {
 class _CreateNewScreenState extends State<CreateNewScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+
   String? _errorText;
 
   @override
@@ -55,7 +52,7 @@ class _CreateNewScreenState extends State<CreateNewScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NextScreen(mnemonic: mnemonic),
+        builder: (context) => NextScreen(mnemonic: mnemonic, password: password),
       ),
     );
   }

