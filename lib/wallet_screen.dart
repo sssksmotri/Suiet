@@ -1,6 +1,120 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-class WalletScreen extends StatelessWidget {
-  const WalletScreen({super.key});
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:web3dart/web3dart.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+
+class WalletScreen extends StatefulWidget {
+  final String privateKey;
+  final String address;
+  final String portfolioId;
+
+  const WalletScreen({
+    Key? key,
+    required this.privateKey,
+    required this.address,
+    required this.portfolioId,
+  }) : super(key: key);
+
+  @override
+  _WalletScreenState createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  late String PrivatyKey;
+  late String walletAddress;
+  final String network = 'mainnet';
+  late Web3Client web3client;
+  late Timer timer;
+  double balance = 0.0;
+  List transactions = [];
+  Map<String, double> positions = {};
+  String selectedCurrency = 'USD';
+  Map<String, double> exchangeRates = {};
+  Map<String, double> tokenPrices = {};
+
+  @override
+  void initState() {
+    super.initState();
+    walletAddress = widget.address;
+    walletAddress = widget.privateKey;
+    web3client = Web3Client('https://mainnet.infura.io/v3/SuietWallet_IOS', http.Client());
+    fetchWalletData();
+    fetchExchangeRates();
+    fetchTokenPrices();
+    timer = Timer.periodic(Duration(minutes: 5), (Timer t) => fetchWalletData());
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  Future<void> fetchWalletData() async {
+    try {
+      EtherAmount balanceAmount = await web3client.getBalance(EthereumAddress.fromHex(walletAddress));
+      double updatedBalance = balanceAmount.getValueInUnit(EtherUnit.ether).toDouble();
+
+      setState(() {
+        balance = updatedBalance;
+        // Update with fetched transactions and positions
+      });
+    } catch (e) {
+      print('Error fetching wallet data: $e');
+    }
+  }
+
+  Future<void> fetchExchangeRates() async {
+    try {
+      final response = await http.get(Uri.parse('https://api.exchangerate-api.com/v4/latest/USD'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          exchangeRates = Map<String, double>.from(data['rates']);
+        });
+      }
+    } catch (e) {
+      print('Error fetching exchange rates: $e');
+    }
+  }
+
+  Future<void> fetchTokenPrices() async {
+    try {
+      final response = await http.get(Uri.parse('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          tokenPrices = {
+            'bitcoin': data['bitcoin']['usd'].toDouble(),
+            'ethereum': data['ethereum']['usd'].toDouble(),
+          };
+        });
+      } else {
+        throw Exception('Failed to load token prices');
+      }
+    } catch (e) {
+      print('Error fetching token prices: $e');
+    }
+  }
+
+  void _copyAddressToClipboard() {
+    Clipboard.setData(ClipboardData(text: walletAddress));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Address copied to clipboard!')),
+    );
+  }
+
+  String formatAddress(String address) {
+    if (address.length > 10) {
+      return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+    } else {
+      return address;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,8 +169,8 @@ class WalletScreen extends StatelessWidget {
                             Row(
                               children: [
                                 const SizedBox(width: 8),
-                                const Text(
-                                  '0x2..b1c54',
+                                Text(
+                                  formatAddress(walletAddress),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
@@ -77,6 +191,7 @@ class WalletScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                               ],
                             ),
                           ],
@@ -109,17 +224,18 @@ class WalletScreen extends StatelessWidget {
                                         height: 35,
                                       ),
                                       const SizedBox(width: 10),
-                                      const Text(
-                                        '0.00 ',
-                                        style: TextStyle(
+                                      Text(
+                                        '${NumberFormat.currency(name: selectedCurrency).format(balance)}',
+                                        style: const TextStyle(
                                           fontSize: 30,
                                           color: Colors.black,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      const Text(
-                                        'USD',
-                                        style: TextStyle(
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        selectedCurrency,
+                                        style: const TextStyle(
                                           fontSize: 24,
                                           color: Color(0xFF007AFF),
                                           fontWeight: FontWeight.bold,
@@ -131,8 +247,8 @@ class WalletScreen extends StatelessWidget {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
-                                      const Text(
-                                        '0x208a1....b1c54',
+                                      Text(
+                                        formatAddress(walletAddress),
                                         style: TextStyle(
                                           fontSize: 16,
                                           color: Colors.black54,
@@ -140,7 +256,7 @@ class WalletScreen extends StatelessWidget {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.copy, color: Colors.black54, size: 16),
-                                        onPressed: () {},
+                                        onPressed: _copyAddressToClipboard,
                                       ),
                                     ],
                                   ),
@@ -149,7 +265,33 @@ class WalletScreen extends StatelessWidget {
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
                                       ElevatedButton(
-                                        onPressed: () {},
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: const Text('Receive'),
+                                                content: SizedBox(
+                                                  width: 200.0,
+                                                  height: 200.0,
+                                                  child: QrImageView(
+                                                    data: walletAddress,
+                                                    version: QrVersions.auto,
+                                                    size: 200.0,
+                                                  ),
+                                                ),
+                                                actions: <Widget>[
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(context).pop();
+                                                    },
+                                                    child: const Text('Close'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: const Color(0xFF007AFF),
                                           foregroundColor: Colors.white,
@@ -186,8 +328,8 @@ class WalletScreen extends StatelessWidget {
                                 width: screenWidth * 0.4,
                                 decoration: const BoxDecoration(
                                   image: DecorationImage(
-                                    image: AssetImage('assets/images/logo3.png'),
-                                    fit: BoxFit.contain,
+                                    image: AssetImage('assets/images/background.png'),
+                                    fit: BoxFit.cover,
                                   ),
                                 ),
                               ),
@@ -203,8 +345,14 @@ class WalletScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Column(
-                children: [
-                  Card(
+                children: positions.entries.map((entry) {
+                  final token = entry.key;
+                  final amount = entry.value;
+                  final price = tokenPrices[token] ?? 0.0;
+                  final valueInCurrency = amount * price;
+                  final percentageChange = 0.0; // Implement percentage change if available
+
+                  return Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -213,74 +361,36 @@ class WalletScreen extends StatelessWidget {
                       leading: CircleAvatar(
                         backgroundColor: Colors.transparent,
                         child: Image.asset(
-                          'assets/images/sui.png',
+                          'assets/images/${token.toLowerCase()}.png',
                           width: 50,
                           height: 50,
                         ),
                       ),
-                      title: const Text(
-                        'SUI',
+                      title: Text(
+                        token,
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
                       ),
-                      subtitle: const Text(
-                        '35.44 SUI',
+                      subtitle: Text(
+                        '$amount $token',
                         style: TextStyle(fontSize: 16, color: Color(0xFF8E8E93)),
                       ),
                       trailing: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Text(
-                            '243.094\$',
+                            '${NumberFormat.currency(name: selectedCurrency).format(valueInCurrency)}',
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
                           ),
                           Text(
-                            '+2.08%',
+                            '${percentageChange.toStringAsFixed(2)}%',
                             style: TextStyle(fontSize: 14, color: Color(0xFF007AFF)),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.transparent,
-                        child: Image.asset(
-                          'assets/images/sui.png',
-                          width: 50,
-                          height: 50,
-                        ),
-                      ),
-                      title: const Text(
-                        'SUI',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
-                      ),
-                      subtitle: const Text(
-                        '35.44 SUI',
-                        style: TextStyle(fontSize: 16, color: Color(0xFF8E8E93)),
-                      ),
-                      trailing: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text(
-                            '243.094\$',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
-                          ),
-                          Text(
-                            '+2.08%',
-                            style: TextStyle(fontSize: 14, color: Color(0xFF007AFF)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  );
+                }).toList(),
               ),
             ),
           ],
