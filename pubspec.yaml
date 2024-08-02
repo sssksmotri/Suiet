@@ -20,6 +20,9 @@ dependencies:
   encrypt: ^5.0.0
   flutter_secure_storage: ^6.0.0
   dart_bip32_bip44: ^0.2.0
+  coingecko_api: ^1.0.0
+  qr_flutter: ^4.0.0
+  intl: ^0.17.0
 
 
 dev_dependencies:
@@ -35,6 +38,12 @@ flutter:
     - assets/images/logo1.png
     - assets/images/logo2.png
     - assets/images/logo3.png
+    - assets/images/log1.png
+    - assets/images/log.png
     - assets/images/sui.png
+    - assets/images/backgr.png
     - assets/images/key.png
     - assets/images/meskr.png
+    - assets/images/vec1.png
+    - assets/images/vec2.png
+    - assets/images/vec3.png
