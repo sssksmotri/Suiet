@@ -1,7 +1,137 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Для работы с Clipboard
+import 'package:shared_preferences/shared_preferences.dart'; // Для работы с SharedPreferences
 import 'warning_screen.dart';
-class SecurityScreen extends StatelessWidget {
+
+class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
+
+  @override
+  _SecurityScreenState createState() => _SecurityScreenState();
+}
+
+class _SecurityScreenState extends State<SecurityScreen> {
+  String? _privateKey;
+  String? _mnemonic;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrivateKey();
+    _loadMnemonic();
+  }
+
+  Future<void> _loadPrivateKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _privateKey = prefs.getString('privateKey');
+    });
+  }
+
+  Future<void> _loadMnemonic() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _mnemonic = prefs.getString('mnemonic');
+    });
+  }
+
+  void _showPrivateKey() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Center(child: Text('Private Key')), // Center the title
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: SelectableText(
+                  _privateKey ?? 'No private key available',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_privateKey != null) {
+                      Clipboard.setData(ClipboardData(text: _privateKey!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Private key copied to clipboard')),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 50), // Make the button wider
+                    backgroundColor: Colors.red.shade100,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6.0),
+                    ),
+                  ),
+                  child: const Text(
+                    'Copy Private Key',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMnemonic() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Center(child: Text('Recovery Phrases')), // Center the title
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: SelectableText(
+                  _mnemonic ?? 'No mnemonic available',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_mnemonic != null) {
+                      Clipboard.setData(ClipboardData(text: _mnemonic!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Mnemonic copied to clipboard')),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 50), // Make the button wider
+                    backgroundColor: Colors.red.shade100,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6.0),
+                    ),
+                  ),
+                  child: const Text(
+                    'Copy Mnemonic',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,13 +216,13 @@ class SecurityScreen extends StatelessWidget {
                             style: TextButton.styleFrom(
                               backgroundColor: Colors.blue.shade100,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6.0), // Smaller border radius
+                                borderRadius: BorderRadius.circular(6.0),
                               ),
                             ),
                             child: const Text(
                               'Update Password',
                               style: TextStyle(
-                                fontSize: 16, // Increased font size for button text
+                                fontSize: 16,
                                 color: Colors.black,
                               ),
                             ),
@@ -159,19 +289,17 @@ class SecurityScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: TextButton(
-                            onPressed: () {
-                              // Action to show the phrases
-                            },
+                            onPressed: _showMnemonic,
                             style: TextButton.styleFrom(
                               backgroundColor: Colors.red.shade100,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6.0), // Smaller border radius
+                                borderRadius: BorderRadius.circular(6.0),
                               ),
                             ),
                             child: const Text(
                               'Show the Phrases',
                               style: TextStyle(
-                                fontSize: 16, // Increased font size for button text
+                                fontSize: 16,
                                 color: Colors.red,
                               ),
                             ),
@@ -206,19 +334,17 @@ class SecurityScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: TextButton(
-                            onPressed: () {
-                              // Action to show the private key
-                            },
+                            onPressed: _showPrivateKey,
                             style: TextButton.styleFrom(
                               backgroundColor: Colors.red.shade100,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6.0), // Smaller border radius
+                                borderRadius: BorderRadius.circular(6.0),
                               ),
                             ),
                             child: const Text(
                               'Show the Private Key',
                               style: TextStyle(
-                                fontSize: 16, // Increased font size for button text
+                                fontSize: 16,
                                 color: Colors.red,
                               ),
                             ),
