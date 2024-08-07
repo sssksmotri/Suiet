@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:suite/import_recovery.dart';
 import 'create_new.dart';
 import 'import_screen.dart';
 import 'wallet_screen.dart';
@@ -192,7 +193,7 @@ class WelcomeScreen extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const ImportScreen(),
+                                    builder: (context) => const ImportRecoveryScreen(),
                                   ),
                                 );
                               },

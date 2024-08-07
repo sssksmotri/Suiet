@@ -1,9 +1,11 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:bip39/bip39.dart' as bip39;
-import 'package:web3dart/web3dart.dart'; // Ensure web3dart is included in pubspec.yaml
-import 'dart:typed_data';
+import 'package:web3dart/web3dart.dart';
 import 'package:wallet/wallet.dart' as wallet;
+import 'package:flutter/services.dart';
 import 'edit_screen.dart';
+import 'package:web3dart/crypto.dart' as crypto;
 
 class NextScreen extends StatelessWidget {
   final String mnemonic;
@@ -14,12 +16,15 @@ class NextScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mnemonicWords = mnemonic.split(' ');
+    final privateKey = _generatePrivateKey();
+    final publicKey = _generatePublicKey(privateKey);
+    final address = _generateAddress(publicKey);
 
-    // Log wallet information when the widget is built
+    // Логируем значения
     print('Mnemonic: $mnemonic');
-    print('Private Key: ${_privateKeyToHex(_generatePrivateKey())}');
-    print('Public Key: ${_generatePublicKey()}');
-    print('Address: ${_generateAddress()}');
+    print('Private Key (Hex): ${_privateKeyToHex(privateKey)}');
+    print('Public Key (Hex): ${_publicKeyToHex(publicKey)}');
+    print('Address: $address');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -86,7 +91,8 @@ class NextScreen extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 20),
                         color: Colors.transparent,
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -116,7 +122,8 @@ class NextScreen extends StatelessWidget {
                                       color: Colors.white.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10),
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       '${index + 1}. ${mnemonicWords[index]}',
@@ -137,24 +144,34 @@ class NextScreen extends StatelessWidget {
                                       padding: const EdgeInsets.only(right: 10),
                                       child: ElevatedButton.icon(
                                         onPressed: () {
-                                          // Add functionality to copy to clipboard
+                                          Clipboard.setData(
+                                              ClipboardData(text: mnemonic));
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(content: Text(
+                                                'Mnemonic copied to clipboard')),
+                                          );
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.transparent,
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(6),
-                                            side: BorderSide(color: Colors.white),
+                                            borderRadius: BorderRadius.circular(
+                                                6),
+                                            side: BorderSide(
+                                                color: Colors.white),
                                           ),
-                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12, horizontal: 16),
                                         ),
-                                        icon: const Icon(Icons.copy, color: Colors.white, size: 16),
+                                        icon: const Icon(
+                                            Icons.copy, color: Colors.white,
+                                            size: 16),
                                         label: const Text(
                                           'Copy',
                                           style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                          ),
+                                              color: Colors.white,
+                                              fontSize: 14),
                                           maxLines: 1,
                                           overflow: TextOverflow.visible,
                                         ),
@@ -168,23 +185,29 @@ class NextScreen extends StatelessWidget {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => EditScreen(
-                                              mnemonic: mnemonic,
-                                              password: password,
-                                              privateKey: _privateKeyToHex(_generatePrivateKey()),
-                                              publicKey: _generatePublicKey(),
-                                              address: _generateAddress(),
-                                            ),
+                                            builder: (context) =>
+                                                EditScreen(
+                                                  mnemonic: mnemonic,
+                                                  password: password,
+                                                  privateKey: _privateKeyToHex(
+                                                      privateKey),
+                                                  publicKey: _publicKeyToHex(
+                                                      publicKey),
+                                                  address: address,
+                                                ),
                                           ),
                                         );
                                       },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.white,
-                                        foregroundColor: const Color(0xFF007AFF),
+                                        foregroundColor: const Color(
+                                            0xFF007AFF),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(
+                                              6),
                                         ),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12),
                                       ),
                                       child: const Text(
                                         'Yes, I\'ve saved it',
@@ -215,37 +238,64 @@ class NextScreen extends StatelessWidget {
   }
 
   Uint8List _generatePrivateKey() {
+    if (!bip39.validateMnemonic(mnemonic)) {
+      throw FormatException("Invalid mnemonic phrase.");
+    }
+
     final seed = bip39.mnemonicToSeed(mnemonic);
-    final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
-    final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
-    final privateKey = _bigIntToUint8List(derivedKey.key);
-
-    print('Generated Private Key: ${_privateKeyToHex(privateKey)}'); // Log private key
-    print('Generated Seed: ${_seedToHex(seed)}'); // Log private key
-    return privateKey;
-  }
-  String _seedToHex(Uint8List seed) {
-    return seed.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-  }
-  String _generatePublicKey() {
-    final privateKey = EthPrivateKey.fromHex(_privateKeyToHex(_generatePrivateKey()));
-    final publicKey = privateKey.publicKey;
-
-    print('Generated Public Key: $publicKey'); // Log public key
-    return publicKey.toString();
+    try {
+      final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
+      final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet
+          .ExtendedPrivateKey;
+      final privateKey = _bigIntToUint8List(derivedKey.key);
+      return privateKey;
+    } catch (e) {
+      if (e is FormatException) {
+        throw FormatException("Failed to generate private key: ${e.message}");
+      } else {
+        throw Exception("An unexpected error occurred: ${e.toString()}");
+      }
+    }
   }
 
-  String _generateAddress() {
-    final privateKey = EthPrivateKey.fromHex(_privateKeyToHex(_generatePrivateKey()));
-    final address = privateKey.address.hex;
+  Uint8List _generatePublicKey(Uint8List privateKey) {
+    try {
+      final ethPrivateKey = EthPrivateKey(privateKey);
+      final publicKey = ethPrivateKey.publicKey;
+      final publicKeyBytes = publicKey.getEncoded(
+          false); // Generate uncompressed public key
+      if (publicKeyBytes.length !=
+          65) { // Uncompressed public key should be 65 bytes including the prefix
+        throw FormatException("Invalid public key length. Expected 65 bytes.");
+      }
+      return publicKeyBytes.sublist(1); // Remove the prefix byte
+    } catch (e) {
+      throw Exception("Failed to generate public key: ${e.toString()}");
+    }
+  }
 
-    print('Generated Address: $address'); // Log address
-    return address;
+  String _generateAddress(Uint8List publicKey) {
+    try {
+      if (publicKey.length != 64) {
+        throw FormatException("Invalid public key length. Expected 64 bytes.");
+      }
+
+      // Generate the address from the public key (last 20 bytes of the keccak256 hash)
+      final addressBytes = crypto.keccak256(publicKey).sublist(12);
+      return EthereumAddress(addressBytes).hex;
+    } catch (e) {
+      throw Exception("Failed to generate address: ${e.toString()}");
+    }
   }
 
   String _privateKeyToHex(Uint8List privateKey) {
-    final hex = privateKey.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-    return hex;
+    return privateKey.map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join();
+  }
+
+  String _publicKeyToHex(Uint8List publicKey) {
+    return publicKey.map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join();
   }
 
   Uint8List _bigIntToUint8List(BigInt bigInt) {

