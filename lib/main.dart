@@ -217,11 +217,11 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                         Positioned(
                           bottom: 10,
-                          right: -30,
+                          right: 10, // Измените значение, чтобы настроить отступ от правого края
                           child: Image.asset(
                             'assets/images/logo2.png',
-                            width: 200,
-                            height: 200,
+                            width: 150,
+                            height: 150,
                           ),
                         ),
                       ],

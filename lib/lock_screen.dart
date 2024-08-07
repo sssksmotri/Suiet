@@ -9,100 +9,99 @@ class LockScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              children: [
-                const SizedBox(height: 100),
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 110,
-                  height: 110,
-                ),
-                const SizedBox(height: 20),
-                const GradientText(
-                  'Back to Suiet',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
+      resizeToAvoidBottomInset: true,
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.height,
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  const SizedBox(height: 100),
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 110,
+                    height: 110,
                   ),
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF015FDF), Color(0xFF1ED2FC)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'The wallet for everyone.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF8E8E93),
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.zero,
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  margin: EdgeInsets.zero,
-                  child: Container(
-                    width: double.infinity,
-                    height: 400,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF015FDF), Color(0xFF1ED2FC)],
-                        begin: Alignment.centerRight,
-                        end: Alignment.centerLeft,
-                      ),
+                  const SizedBox(height: 20),
+                  const GradientText(
+                    'Back to Suiet',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: Stack(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, // Align children to the start (left)
-                          children: [
-                            const Text(
-                              'Password',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF015FDF), Color(0xFF1ED2FC)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'The wallet for everyone.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF8E8E93),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.zero,
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: EdgeInsets.zero,
+                    child: Container(
+                      width: double.infinity,
+                      height: 400,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF015FDF), Color(0xFF1ED2FC)],
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                        ),
+                      ),
+                      child: Stack(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Password',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Stack(
-                              children: [
-                                Container(
-                                  height: 50,
-                                  decoration: const BoxDecoration(
-                                    borderRadius: BorderRadius.vertical(
-                                      bottom: Radius.circular(8),
-                                    ),
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: Colors.white,
-                                        width: 1,
-                                      ),
+                              const SizedBox(height: 6),
+                              Container(
+                                height: 50,
+                                decoration: const BoxDecoration(
+                                  borderRadius: BorderRadius.vertical(
+                                    bottom: Radius.circular(8),
+                                  ),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Colors.white,
+                                      width: 1,
                                     ),
                                   ),
                                 ),
-                                TextField(
+                                child: TextField(
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                                     hintText: 'Please enter the password',
@@ -113,58 +112,61 @@ class LockScreen extends StatelessWidget {
                                   ),
                                   style: const TextStyle(color: Colors.white),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-                            ElevatedButton.icon(
-                              onPressed: () {},
-                              label: const Text(
-                                'Unlock',
-                                style: TextStyle(color: Color(0xFF007AFF)),
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                side: const BorderSide(color: Color(0xFF007AFF)),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                              const SizedBox(height: 15),
+                              ElevatedButton.icon(
+                                onPressed: () {},
+                                label: const Text(
+                                  'Unlock',
+                                  style: TextStyle(color: Color(0xFF007AFF)),
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                minimumSize: Size(double.infinity, 45),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Center(
-                              child: const Text(
-                                'Forget Password?',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  side: const BorderSide(color: Color(0xFF007AFF)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  minimumSize: Size(double.infinity, 45),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Positioned(
-                          bottom: 16,
-                          right: 5,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 5, bottom: 16),
-                            child: Image.asset(
-                              'assets/images/logo2.png',
-                              width: screenWidth * 0.4,
-                              height: screenWidth * 0.4,
-                              fit: BoxFit.contain,
+                              const SizedBox(height: 6),
+                              Center(
+                                child: const Text(
+                                  'Forget Password?',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Positioned(
+                            bottom: 16,
+                            right: 5,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 5, bottom: 16),
+                              child: FittedBox(
+                                fit: BoxFit.none,
+                                child: Image.asset(
+                                  'assets/images/logo2.png',
+                                  width: screenWidth * 0.4,
+                                  height: screenWidth * 0.4,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
