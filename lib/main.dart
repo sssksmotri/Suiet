@@ -1,16 +1,63 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'create_new.dart';
 import 'import_screen.dart';
-
+import 'wallet_screen.dart';
+import 'history_screen.dart';
+import 'dApps_screen.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-
-
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isWalletCreated = false;
+  String _privateKey = '';
+  String _address = '';
+  String _portfolioId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWalletData();
+  }
+
+  Future<void> _loadWalletData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Получение списка ключей для кошельков
+    List<String>? walletKeys = prefs.getStringList('walletKeys');
+
+    if (walletKeys != null && walletKeys.isNotEmpty) {
+      // Загрузка данных первого кошелька
+      String walletKey = walletKeys.first;
+      String? walletDataJson = prefs.getString(walletKey);
+
+      if (walletDataJson != null) {
+        Map<String, dynamic> walletData = jsonDecode(walletDataJson);
+
+        setState(() {
+          _isWalletCreated = true;
+          _privateKey = walletData['privateKey'] ?? '';
+          _address = walletData['address'] ?? '';
+          _portfolioId = walletData['portfolioId'] ?? '';
+        });
+        return;
+      }
+    }
+
+    setState(() {
+      _isWalletCreated = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +66,23 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const WelcomeScreen(),
+      home: _isWalletCreated
+          ? WalletScreen(
+        privateKey: _privateKey,
+        address: _address,
+        portfolioId: _portfolioId,
+      )
+          : const WelcomeScreen(),
+      routes: {
+        '/wallet': (context) => WalletScreen(
+          privateKey: _privateKey,
+          address: _address,
+          portfolioId: _portfolioId,
+        ),
+        '/create_new': (context) => const CreateNewScreen(),
+        '/history': (context) => const HistoryScreen(),
+        '/dApps': (context) => const dApps_screen(),
+      },
     );
   }
 }

@@ -1,5 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:suite/stake.dart';
+import 'wallet_screen.dart';  // Импортируем WalletScreen
 import 'setting_screen.dart';
+import 'import_screen.dart';
+
 class WalletSelectionScreen extends StatefulWidget {
   const WalletSelectionScreen({super.key});
 
@@ -8,6 +14,65 @@ class WalletSelectionScreen extends StatefulWidget {
 }
 
 class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
+  List<Map<String, String>> _wallets = [];
+  String? _selectedWalletKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWallets();
+  }
+
+  Future<void> _loadWallets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final walletKeys = prefs.getStringList('walletKeys') ?? [];
+    final savedWalletKey = prefs.getString('selectedWalletKey');
+
+    if (walletKeys.isNotEmpty) {
+      final List<Map<String, String>> wallets = [];
+
+      for (final key in walletKeys) {
+        final walletData = prefs.getString(key);
+
+        if (walletData != null) {
+          try {
+            final wallet = jsonDecode(walletData) as Map<String, dynamic>;
+            wallets.add({
+              'address': wallet['address'] ?? '',
+              'walletKey': key,
+              'name': wallet['name'] ?? 'Wallet',
+              'privateKey': wallet['privateKey'] ?? '',  // Добавьте privateKey
+              'portfolioId': wallet['portfolioId'] ?? '',  // Добавьте portfolioId
+            });
+          } catch (e) {
+            print('Error decoding wallet data for key $key: $e');
+          }
+        }
+      }
+
+      setState(() {
+        _wallets = wallets;
+        if (savedWalletKey != null && wallets.any((wallet) => wallet['walletKey'] == savedWalletKey)) {
+          _selectedWalletKey = savedWalletKey;
+        } else if (_wallets.isNotEmpty) {
+          _selectedWalletKey = _wallets[0]['walletKey'];
+        }
+      });
+    }
+  }
+
+  Future<void> _saveSelectedWalletKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedWalletKey', key);
+  }
+
+  String _formatAddress(String address) {
+    if (address.length > 10) {
+      return '${address.substring(0, 6)}...${address.substring(address.length - 2)}';
+    }
+    return address;
+  }
+
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
@@ -19,9 +84,9 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
           children: [
             Stack(
               children: [
-                Align(
+                const Align(
                   alignment: Alignment.center,
-                  child: const Text(
+                  child: Text(
                     'Suite',
                     style: TextStyle(
                       fontSize: 24,
@@ -35,35 +100,71 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
                   child: IconButton(
                     icon: const Icon(Icons.settings),
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      );
+                      if (_selectedWalletKey != null) {
+                        final selectedWallet = _wallets.firstWhere(
+                                (wallet) => wallet['walletKey'] == _selectedWalletKey);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SettingsScreen(
+                              walletKey: selectedWallet['walletKey']!,
+                              address: selectedWallet['address']!,
+                            ),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 2),
-            const Text(
-              '2 Wallets',
-              style: TextStyle(
+            Text(
+              '${_wallets.length} Wallet${_wallets.length == 1 ? '' : 's'}',
+              style: const TextStyle(
                 fontSize: 16,
                 color: Colors.black54,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            const ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blue,
+            Expanded(
+              child: ListView.builder(
+                itemCount: _wallets.length,
+                itemBuilder: (context, index) {
+                  final wallet = _wallets[index];
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.blue,
+                    ),
+                    title: Text('Wallet #${index + 1}'),
+                    subtitle: Text(_formatAddress(wallet['address'] ?? '')),
+                    trailing: _selectedWalletKey == wallet['walletKey']
+                        ? const Icon(Icons.check, color: Colors.blue)
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedWalletKey = wallet['walletKey'];
+                      });
+                      _saveSelectedWalletKey(wallet['walletKey']!);
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WalletScreen(
+                            privateKey: wallet['privateKey']!,
+                            address: wallet['address']!,
+                            portfolioId: wallet['portfolioId']!,
+
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-              title: Text('Wallet #1'),
-              subtitle: Text('6hyjb0h ..x'),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Row(
@@ -71,7 +172,12 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Действие для кнопки "Stake"
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                            builder: (context) => Stake(),
+                        ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
@@ -93,7 +199,12 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        // Действие для кнопки "Import"
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ImportScreen(),
+                          ),
+                        );
                       },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.blue),

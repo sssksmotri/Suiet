@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Для работы с Clipboard
-import 'package:shared_preferences/shared_preferences.dart'; // Для работы с SharedPreferences
-import 'warning_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:suite/warning_screen.dart'; // Для работы с SharedPreferences
 
 class SecurityScreen extends StatefulWidget {
-  const SecurityScreen({super.key});
+  final String walletKey;
+  const SecurityScreen({super.key, required this.walletKey});
 
   @override
   _SecurityScreenState createState() => _SecurityScreenState();
@@ -13,26 +15,30 @@ class SecurityScreen extends StatefulWidget {
 class _SecurityScreenState extends State<SecurityScreen> {
   String? _privateKey;
   String? _mnemonic;
+  String? _address;
 
   @override
   void initState() {
     super.initState();
-    _loadPrivateKey();
-    _loadMnemonic();
+    _loadWalletData();
   }
 
-  Future<void> _loadPrivateKey() async {
+  Future<void> _loadWalletData() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _privateKey = prefs.getString('privateKey');
-    });
-  }
+    final walletData = prefs.getString(widget.walletKey);
 
-  Future<void> _loadMnemonic() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _mnemonic = prefs.getString('mnemonic');
-    });
+    if (walletData != null) {
+      try {
+        final wallet = jsonDecode(walletData) as Map<String, dynamic>;
+        setState(() {
+          _address = wallet['address'] ?? 'No address available';
+          _privateKey = wallet['privateKey'] ?? 'No private key available';
+          _mnemonic = wallet['mnemonic'] ?? 'No mnemonic available';
+        });
+      } catch (e) {
+        print('Error decoding wallet data for key ${widget.walletKey}: $e');
+      }
+    }
   }
 
   void _showPrivateKey() {
@@ -40,7 +46,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Center(child: Text('Private Key')), // Center the title
+          title: const Center(child: Text('Private Key')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -62,7 +68,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50), // Make the button wider
+                    minimumSize: Size(double.infinity, 50),
                     backgroundColor: Colors.red.shade100,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6.0),
@@ -89,7 +95,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Center(child: Text('Recovery Phrases')), // Center the title
+          title: const Center(child: Text('Recovery Phrases')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -111,7 +117,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50), // Make the button wider
+                    minimumSize: Size(double.infinity, 50),
                     backgroundColor: Colors.red.shade100,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6.0),
@@ -180,6 +186,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             Expanded(
               child: ListView(
                 children: [
+
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Column(
@@ -209,7 +216,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const WarningScreen(),
+                                  builder: (context) => WarningScreen(),
                                 ),
                               );
                             },
@@ -231,39 +238,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Connected dApps',
-                          style: TextStyle(
-                            fontWeight: FontWeight.normal,
-                            fontSize: 18,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'If you no longer use its access, you will be able to reconnect to the app later if needed.',
-                          style: TextStyle(
-                            color: Color(0xFF8E8E93),
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'You have no connected dApps',
-                          style: TextStyle(
-                            color: Color(0xFF8E8E93),
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Column(
@@ -324,7 +298,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'A recovery phrase grants full access to all wallets generated by it. You can manage and export your recovery phrases.',
+                          'A private key grants full access to the wallet. Be sure to keep it secure.',
                           style: TextStyle(
                             color: Color(0xFF8E8E93),
                             fontSize: 15,

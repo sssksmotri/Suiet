@@ -3,8 +3,12 @@ import 'security_screen.dart';
 import 'lock_screen.dart';
 import 'reset_screen.dart';
 import 'delete_wallet_screen.dart';
+
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final String walletKey;
+  final String address;
+
+  const SettingsScreen({super.key, required this.walletKey, required this.address});
 
   @override
   Widget build(BuildContext context) {
@@ -28,16 +32,14 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ListTile
-            const ListTile(
-              leading: CircleAvatar(
+            ListTile(
+              leading: const CircleAvatar(
                 backgroundColor: Colors.blue,
               ),
-              title: Text('Wallet #1'),
-              subtitle: Text('6hyjb0h ..x'),
+              title: Text('Wallet'),
+              subtitle: Text(_formatAddress(address)),
             ),
             const SizedBox(height: 20),
-            // Container with four cards in a column
             Container(
               padding: const EdgeInsets.all(24),
               width: MediaQuery.of(context).size.width - 32,
@@ -52,7 +54,7 @@ class SettingsScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SecurityScreen(),
+                          builder: (context) => SecurityScreen(walletKey: walletKey),
                         ),
                       );
                     },
@@ -61,7 +63,7 @@ class SettingsScreen extends StatelessWidget {
                       height: 50,
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0x33007AFF), // Light blue with 20% opacity
+                        color: const Color(0x33007AFF),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -94,7 +96,7 @@ class SettingsScreen extends StatelessWidget {
                       height: 50,
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0x33007AFF), // Light blue with 20% opacity
+                        color: const Color(0x33007AFF),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -127,7 +129,7 @@ class SettingsScreen extends StatelessWidget {
                       height: 50,
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0x33007AFF), // Light blue with 20% opacity
+                        color: const Color(0x33007AFF),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -185,5 +187,12 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatAddress(String address) {
+    if (address.length > 10) {
+      return '${address.substring(0, 6)}...${address.substring(address.length - 2)}';
+    }
+    return address;
   }
 }

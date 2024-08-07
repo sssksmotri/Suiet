@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'wallet_selection.dart';
+import 'main_net_screen.dart';
 
 class dApps_screen extends StatefulWidget {
   const dApps_screen({super.key});
@@ -11,17 +12,50 @@ class dApps_screen extends StatefulWidget {
 class _dApps_screen extends State<dApps_screen> {
   int _selectedIndex = 1;
   bool _isFeaturedSelected = true;
+  String _address = '';
+  String? _privateKey; // Добавьте другие переменные, если нужно
+  String? _portfolioId;
+  List<String>? _walletKeys;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final Map<String, dynamic>? args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      setState(() {
+        _address = args['address'] ?? '';
+        _privateKey = args['privateKey'];
+        _portfolioId = args['portfolioId'];
+        _walletKeys = args['walletKeys'];
+      });
+    }
+  }
+
+  String formatAddress(String address) {
+    if (address.length > 10) {
+      return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+    } else {
+      return address;
+    }
+  }
 
   void _onItemTapped(int index) {
+    final Map<String, dynamic> arguments = {
+      'privateKey': _privateKey,
+      'address': _address,
+      'portfolioId': _portfolioId,
+      'walletKeys': _walletKeys,
+    };
+
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, '/wallet');
+        Navigator.pushReplacementNamed(context, '/wallet', arguments: arguments);
         break;
       case 1:
-        Navigator.pushReplacementNamed(context, '/dApps');
+        Navigator.pushReplacementNamed(context, '/dApps', arguments: arguments);
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, '/history');
+        Navigator.pushReplacementNamed(context, '/history', arguments: arguments);
         break;
     }
   }
@@ -168,11 +202,9 @@ class _dApps_screen extends State<dApps_screen> {
   }
 
   Widget buildPopularSection() {
-
     final screenWidth = MediaQuery.of(context).size.width;
     final List<Map<String, String>> featuredItems = [
-      {'name': 'Clutchy', 'description': 'One-click Perpetu al on Sui', 'image': 'assets/images/clutchy.png'},
-
+      {'name': 'Clutchy', 'description': 'One-click Perpetual on Sui', 'image': 'assets/images/clutchy.png'},
     ];
 
     return Column(
@@ -230,7 +262,6 @@ class _dApps_screen extends State<dApps_screen> {
         buildAppCard('Clutchy', 'Gaming and NFT Marketplace', 'assets/images/clutchy.png'),
       ],
     );
-
   }
 
   @override
@@ -345,9 +376,9 @@ class _dApps_screen extends State<dApps_screen> {
                             },
                             child: Row(
                               children: [
-                                const Text(
-                                  'Wallet #1',
-                                  style: TextStyle(
+                                Text(
+                                  'Wallet', // Используем адрес
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -365,15 +396,24 @@ class _dApps_screen extends State<dApps_screen> {
                           Row(
                             children: [
                               const SizedBox(width: 8),
-                              const Text(
-                                '0x2..b1c54',
+                               Text(
+                                formatAddress(_address),
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Container(
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => MainNetScreen(
+                                      address:_address,
+                                    )),
+                                  );
+                                },
+                                child:Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
@@ -387,6 +427,7 @@ class _dApps_screen extends State<dApps_screen> {
                                   ),
                                 ),
                               ),
+                              )
                             ],
                           ),
                         ],

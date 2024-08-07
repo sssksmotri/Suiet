@@ -1,14 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'wallet_selection.dart';
+
 class MainNetScreen extends StatefulWidget {
-  const MainNetScreen({super.key});
+  final String address; // Убираем инициализацию здесь
+  const MainNetScreen({
+    Key? key,
+    required this.address,
+  }) : super(key: key);
 
   @override
   _MainNetScreenState createState() => _MainNetScreenState();
 }
 
 class _MainNetScreenState extends State<MainNetScreen> {
-  bool _isChecked = false;
+  int _selectedNetworkIndex = 0; // Индекс выбранного поля
+  String _displayedNetworkName = 'mainnet'; // Текущая отображаемая сеть
+  String _pendingNetworkName = 'mainnet'; // Сеть, выбранная пользователем
+  late String _walletAddress;
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedNetwork(); // Загружаем сохраненную сеть при инициализации
+    _walletAddress = widget.address;
+  }
+
+  // Загрузка сохраненной сети из SharedPreferences
+  Future<void> _loadSavedNetwork() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedNetworkName = prefs.getString('selectedNetworkName');
+
+    if (savedNetworkName != null) {
+      setState(() {
+        _displayedNetworkName = savedNetworkName;
+        _pendingNetworkName = savedNetworkName;
+        _selectedNetworkIndex = _getNetworkIndex(savedNetworkName);
+      });
+      print('Loaded network: $_displayedNetworkName');
+    } else {
+      print('No saved network found, using default.');
+    }
+  }
+
+  String formatAddress(String address) {
+    if (address.length > 10) {
+      return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+    } else {
+      return address;
+    }
+  }
+
+  // Сохранение выбранной сети в SharedPreferences
+  Future<void> _saveNetwork() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedNetworkName', _displayedNetworkName);
+    print('Saved network: $_displayedNetworkName'); // Отладочный вывод
+  }
+
+  // Получение индекса сети по имени
+  int _getNetworkIndex(String networkName) {
+    switch (networkName) {
+      case 'mainnet':
+        return 0;
+      case 'testnet':
+        return 1;
+      case 'devnet':
+        return 2;
+      default:
+        return 0;
+    }
+  }
+
+  void _onNetworkSelected(int index, String name) {
+    setState(() {
+      _selectedNetworkIndex = index;
+      _pendingNetworkName = name;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +124,7 @@ class _MainNetScreenState extends State<MainNetScreen> {
                               child: Row(
                                 children: [
                                   const Text(
-                                    'Wallet #1',
+                                    'Wallet',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -75,9 +143,9 @@ class _MainNetScreenState extends State<MainNetScreen> {
                             Row(
                               children: [
                                 const SizedBox(width: 8),
-                                const Text(
-                                  '0x2..b1c54',
-                                  style: TextStyle(
+                                 Text(
+                                   formatAddress(_walletAddress),
+                                    style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
                                   ),
@@ -85,7 +153,7 @@ class _MainNetScreenState extends State<MainNetScreen> {
                                 const SizedBox(width: 8),
                                 GestureDetector(
                                   onTap: () {
-                                    // Add action for 'mainnet' container tap
+                                    // Действие при нажатии на выбранную сеть (если нужно)
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -93,9 +161,9 @@ class _MainNetScreenState extends State<MainNetScreen> {
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Text(
-                                      'mainnet',
-                                      style: TextStyle(
+                                    child: Text(
+                                      _displayedNetworkName, // Отображение текущей сети
+                                      style: const TextStyle(
                                         color: Colors.blue,
                                         fontSize: 14,
                                       ),
@@ -114,25 +182,24 @@ class _MainNetScreenState extends State<MainNetScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            // Row with Arrow and Centered Text
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () {
-                      // Handle arrow tap
+                      Navigator.pop(context); // Возврат назад при нажатии на стрелку
                     },
                     child: const Icon(
-                      Icons.arrow_back_ios, // Left arrow icon
+                      Icons.arrow_back_ios,
                       color: Colors.black,
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
+                  const Expanded(
                     child: Center(
-                      child: const Text(
+                      child: Text(
                         'Network',
                         style: TextStyle(
                           color: Colors.blue,
@@ -146,151 +213,9 @@ class _MainNetScreenState extends State<MainNetScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Image.asset(
-                      'assets/images/vec1.png',
-                      height: 24,
-                      width: 24,
-                    ),
-                    const Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'Mainnet',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Checkbox(
-                      value: _isChecked,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _isChecked = value ?? false;
-                        });
-                      },
-                      checkColor: Colors.blue, // Color of the checkmark
-                      activeColor: Colors.white, // Background color of the checkbox
-                      side: BorderSide(color: Colors.white, width: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 5),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Image.asset(
-                      'assets/images/vec2.png',
-                      height: 24,
-                      width: 24,
-                    ),
-                    const Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'Testnet',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Checkbox(
-                      value: _isChecked,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _isChecked = value ?? false;
-                        });
-                      },
-                      checkColor: Colors.blue, // Color of the checkmark
-                      activeColor: Colors.white, // Background color of the checkbox
-                      side: BorderSide(color: Colors.white, width: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 5),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Image.asset(
-                      'assets/images/vec3.png',
-                      height: 24,
-                      width: 24,
-                    ),
-                    const Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'Devnet',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Checkbox(
-                      value: _isChecked,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _isChecked = value ?? false;
-                        });
-                      },
-                      checkColor: Colors.blue, // Color of the checkmark
-                      activeColor: Colors.white, // Background color of the checkbox
-                      side: BorderSide(color: Colors.white, width: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildNetworkOption(0, 'mainnet', 'assets/images/vec1.png'),
+            _buildNetworkOption(1, 'testnet', 'assets/images/vec2.png'),
+            _buildNetworkOption(2, 'devnet', 'assets/images/vec3.png'),
             const SizedBox(height: 20),
           ],
         ),
@@ -299,10 +224,14 @@ class _MainNetScreenState extends State<MainNetScreen> {
         padding: const EdgeInsets.only(left: 30, right: 30, bottom: 16),
         child: ElevatedButton(
           onPressed: () {
-            // Save button action
+            // Обновление текста на экране после нажатия на кнопку "Save"
+            setState(() {
+              _displayedNetworkName = _pendingNetworkName;
+              _saveNetwork(); // Сохранение выбранной сети
+            });
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue, // Updated to backgroundColor
+            backgroundColor: Colors.blue,
             padding: const EdgeInsets.symmetric(vertical: 15),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -314,6 +243,62 @@ class _MainNetScreenState extends State<MainNetScreen> {
               fontSize: 18,
               color: Colors.white,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Метод для создания пункта выбора сети
+  Widget _buildNetworkOption(int index, String name, String assetPath) {
+    final isSelected = _selectedNetworkIndex == index;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      child: GestureDetector(
+        onTap: () => _onNetworkSelected(index, name),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected ? Border.all(color: Colors.blue) : Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Image.asset(
+                assetPath,
+                color: isSelected ? Colors.blue : Colors.black,
+                height: 24,
+                width: 24,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      color: isSelected ? Colors.blue : Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              Checkbox(
+                value: isSelected,
+                onChanged: (bool? value) {
+                  _onNetworkSelected(index, name);
+                },
+                checkColor: Colors.white,
+                activeColor: Colors.blue,
+                side: BorderSide(color: isSelected ? Colors.blue : Colors.grey.shade300, width: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
           ),
         ),
       ),
