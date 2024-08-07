@@ -72,16 +72,14 @@ class _EditScreenState extends State<EditScreen> {
       ),
       body: Stack(
         children: [
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 5, bottom: 16),
-              child: Image.asset(
-                'assets/images/logo3.png',
-                width: screenWidth * 0.4,
-                height: screenWidth * 0.4,
-                fit: BoxFit.contain,
-              ),
+          Positioned(
+            bottom: 16,
+            right: 5,
+            child: Image.asset(
+              'assets/images/logo3.png',
+              width: screenWidth * 0.4,
+              height: screenWidth * 0.4,
+              fit: BoxFit.contain,
             ),
           ),
           Column(
