@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:simple_rc4/simple_rc4.dart';
+import 'package:suite/createpassword.dart';
 import 'package:wallet/wallet.dart' as wallet;
 import 'package:web3dart/web3dart.dart' as web3dart;
 import 'package:flutter/services.dart';
@@ -25,7 +26,10 @@ class ImportRecoveryScreen extends StatefulWidget {
 class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
   int _selectedFieldCount = 12;
   final List<TextEditingController> _controllers = [];
-  bool _isMnemonicValid = true; // Добавлено для хранения статуса валидности
+  bool _isMnemonicValid = true;
+  final List<bool> _isFieldValid = []; // Добавлено для хранения статуса валидности
+  List<String>? _bip39WordList; // Список слов BIP-39
+  bool _isLoading = true; // Флаг загрузки слов
 
   @override
   void initState() {
@@ -34,6 +38,61 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
       _selectedFieldCount,
           (index) => TextEditingController(),
     ));
+    _isFieldValid.addAll(List.generate(
+      _selectedFieldCount,
+          (_) => true,
+    ));
+    _loadBip39WordList(); // Загрузить список слов при инициализации
+  }
+
+  Future<void> _loadBip39WordList() async {
+    try {
+      final wordListString = await rootBundle.loadString('assets/bip39.txt');
+      setState(() {
+        _bip39WordList = wordListString.split('\n').map((word) => word.trim()).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Failed to load word list: ${e.toString()}');
+    }
+  }
+
+
+
+  void _validateFields() {
+    if (_bip39WordList == null || _controllers.length != _selectedFieldCount) {
+      print('Invalid state for validation.');
+      return;
+    }
+
+    final words = _controllers.map((c) => c.text.trim()).toList();
+
+    // Логирование слов
+    print('Entered words: $words');
+
+    // Проверка валидности всей мнемоники
+    final mnemonic = words.join(' ');
+    final isMnemonicValid = bip39.validateMnemonic(mnemonic);
+
+    // Логирование результата проверки всей мнемоники
+    print('Mnemonic validation result: $isMnemonicValid');
+
+    // Проверка валидности каждого слова
+    final fieldValidity = List.generate(_selectedFieldCount, (index) {
+      final word = words[index];
+      final isValid = _bip39WordList!.contains(word);
+      // Логирование валидности каждого слова
+      print('Word at index $index ("$word") validation result: $isValid');
+      return isValid;
+    });
+
+    setState(() {
+      _isMnemonicValid = isMnemonicValid;
+      _isFieldValid.setAll(0, fieldValidity);
+
+      // Логирование результатов проверки полей
+      print('Field validity results: $_isFieldValid');
+    });
   }
 
   @override
@@ -46,25 +105,22 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
 
   void _updateFieldCount(int newCount) {
     setState(() {
-      _selectedFieldCount = newCount;
-      if (_controllers.length < _selectedFieldCount) {
-        _controllers.addAll(List.generate(
-          _selectedFieldCount - _controllers.length,
-              (index) => TextEditingController(),
-        ));
-      } else if (_controllers.length > _selectedFieldCount) {
-        _controllers.removeRange(_selectedFieldCount, _controllers.length);
+      if (newCount > _selectedFieldCount) {
+        // Добавляем новые контроллеры
+        _controllers.addAll(List.generate(newCount - _selectedFieldCount, (index) => TextEditingController()));
+        _isFieldValid.addAll(List.generate(newCount - _selectedFieldCount, (_) => true));
+      } else if (newCount < _selectedFieldCount) {
+        // Удаляем лишние контроллеры и флаги валидности
+        _controllers.removeRange(newCount, _controllers.length);
+        _isFieldValid.removeRange(newCount, _isFieldValid.length);
       }
+      _selectedFieldCount = newCount;
     });
   }
 
   Future<void> _importWallet() async {
     final mnemonic = _controllers.map((c) => c.text).join(' ');
-
-    setState(() {
-      _isMnemonicValid = bip39.validateMnemonic(mnemonic); // Обновление статуса валидности
-    });
-
+    _validateFields();
     if (!_isMnemonicValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Invalid mnemonic phrase.')),
@@ -157,19 +213,39 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
       walletKeys.add(walletKey);
       await prefs.setStringList('walletKeys', walletKeys);
 
-      Navigator.push(
+      _checkPassword(privateKey, address, portfolioId); // Добавляем вызов метода здесь
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Address does not match the server response.')),
+      );
+    }
+  }
+
+  Future<void> _checkPassword(String privateKey, String address, String portfolioId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasPassword = prefs.getString('userPassword') != null;
+
+    if (!hasPassword) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreatePasswordImport(
+            privateKey: privateKey,
+            address: address,
+            portfolioId: portfolioId,), // Переход на экран создания пароля
+        ),
+      );
+    } else {
+      // Если пароль уже есть, сразу переходим к кошельку
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => WalletScreen(
             privateKey: privateKey,
             address: address,
             portfolioId: portfolioId,
-          ),
+          ), // Переход на экран кошелька
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Address does not match the server response.')),
       );
     }
   }
@@ -260,9 +336,28 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
     return bytes;
   }
 
+  Future<void> _pasteMnemonic() async {
+    final clipboardData = await Clipboard.getData('text/plain');
+    if (clipboardData != null) {
+      final words = clipboardData.text?.split(' ') ?? [];
+      for (int i = 0; i < _controllers.length && i < words.length; i++) {
+        _controllers[i].text = words[i];
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -378,35 +473,46 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
                           ),
                           itemCount: _selectedFieldCount,
                           itemBuilder: (context, index) {
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: TextField(
-                                controller: _controllers[index],
-                                textAlign: TextAlign.left,
-                                decoration: InputDecoration(
-                                  labelText: '${index + 1}.',
-                                  filled: true,
-                                  fillColor: Colors.white.withOpacity(0.2),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                  labelStyle: TextStyle(
-                                    color: _isMnemonicValid ? Colors.white : Colors.red,
-                                  ),
-                                  hintStyle: TextStyle(
-                                    color: _isMnemonicValid ? Colors.white : Colors.red,
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: TextField(
+                                      controller: _controllers[index],
+                                      textAlign: TextAlign.left,
+                                      decoration: InputDecoration(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 35, vertical: 10),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.white.withOpacity(0.2),
+                                      ),
+                                      style: TextStyle(
+                                        color: _isFieldValid[index] ? Colors.white : Colors.red,
+                                      ),
+                                      cursorColor: Colors.white,
+                                    ),
                                   ),
                                 ),
-                                style: TextStyle(
-                                  color: _isMnemonicValid ? Colors.white : Colors.red,
+                                Positioned(
+                                  left: 8,
+                                  top: 12,
+                                  child: Text(
+                                    '${index + 1}.',
+                                    style: TextStyle(
+                                      color: _isFieldValid[index] ? Colors.white : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                                cursorColor: Colors.white,
-                              ),
+                              ],
                             );
                           },
                         ),
@@ -418,7 +524,7 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 10),
                                 child: ElevatedButton.icon(
-                                  onPressed: () {},
+                                  onPressed: _pasteMnemonic,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     foregroundColor: Colors.white,
@@ -428,15 +534,18 @@ class _ImportRecoveryScreenState extends State<ImportRecoveryScreen> {
                                     ),
                                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                   ),
-                                  icon: const Icon(Icons.copy, color: Colors.white, size: 16),
-                                  label: const Text(
-                                    'Copy',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
+                                  icon: const Icon(Icons.paste, color: Colors.white, size: 16),
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown, // Масштабирует текст, чтобы он поместился в доступное пространство
+                                    child: Text(
+                                      'Paste',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14, // Начальный размер текста
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.visible,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.visible,
                                   ),
                                 ),
                               ),

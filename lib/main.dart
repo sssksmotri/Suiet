@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:suite/import_recovery.dart';
+import 'package:suite/lock_screen.dart';
 import 'create_new.dart';
 import 'import_screen.dart';
 import 'wallet_screen.dart';
@@ -11,7 +12,6 @@ import 'dApps_screen.dart';
 void main() {
   runApp(const MyApp());
 }
-
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -63,15 +63,12 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Suiet',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       home: _isWalletCreated
-          ? WalletScreen(
-        privateKey: _privateKey,
-        address: _address,
-        portfolioId: _portfolioId,
+          ? const LockScreen(
       )
           : const WelcomeScreen(),
       routes: {

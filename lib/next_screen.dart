@@ -167,13 +167,17 @@ class NextScreen extends StatelessWidget {
                                         icon: const Icon(
                                             Icons.copy, color: Colors.white,
                                             size: 16),
-                                        label: const Text(
-                                          'Copy',
-                                          style: TextStyle(
+                                        label: FittedBox(
+                                          fit: BoxFit.scaleDown, // Масштабирует текст, чтобы он поместился в доступное пространство
+                                          child: Text(
+                                            'Copy',
+                                            style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: 14),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.visible,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.visible,
+                                          ),
                                         ),
                                       ),
                                     ),

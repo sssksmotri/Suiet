@@ -40,6 +40,7 @@ class _EditScreenState extends State<EditScreen> {
         (_) => TextEditingController(),
   );
   String? _errorMessage;
+  List<bool> _isMnemonicFieldValid = List.generate(12, (_) => true);
 
   @override
   void dispose() {
@@ -139,35 +140,48 @@ class _EditScreenState extends State<EditScreen> {
                             ),
                             itemCount: 12,
                             itemBuilder: (context, index) {
-                              final hasError = _errorMessage != null;
+                              final hasError = !_isMnemonicFieldValid[index];
 
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: TextField(
-                                  controller: _mnemonicControllers[index],
-                                  decoration: InputDecoration(
-                                    labelText: '${index + 1}.',
-                                    filled: true,
-                                    fillColor: Colors.white.withOpacity(0.2),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                    labelStyle: TextStyle(
-                                      color: hasError ? Colors.red : Colors.white,
-                                    ),
-                                    hintStyle: TextStyle(
-                                      color: hasError ? Colors.red : Colors.white,
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: TextField(
+                                        controller: _mnemonicControllers[index],
+                                        textAlign: TextAlign.left,
+                                        decoration: InputDecoration(
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 35, vertical: 10),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.2),
+                                        ),
+                                        style: TextStyle(
+                                          color: hasError ? Colors.red : Colors.white,
+                                        ),
+                                        cursorColor: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                  style: TextStyle(
-                                    color: hasError ? Colors.red : Colors.white,
+                                  Positioned(
+                                    left: 8,
+                                    top: 12,
+                                    child: Text(
+                                      '${index + 1}.',
+                                      style: TextStyle(
+                                        color: hasError ? Colors.red : Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               );
                             },
                           ),
@@ -179,14 +193,37 @@ class _EditScreenState extends State<EditScreen> {
                                 onPressed: () async {
                                   final inputMnemonic = _mnemonicControllers
                                       .map((controller) => controller.text.trim())
-                                      .join(' ');
+                                      .toList();
 
-                                  if (inputMnemonic != widget.mnemonic) {
+                                  // Split the original mnemonic into individual words
+                                  final mnemonicWords = widget.mnemonic.split(' ');
+
+                                  // Validate each field individually
+                                  bool allValid = true;
+                                  for (int i = 0; i < 12; i++) {
+                                    if (inputMnemonic[i] != mnemonicWords[i]) {
+                                      setState(() {
+                                        _isMnemonicFieldValid[i] = false;
+                                        allValid = false;
+                                      });
+                                    } else {
+                                      setState(() {
+                                        _isMnemonicFieldValid[i] = true;
+                                      });
+                                    }
+                                  }
+
+                                  if (!allValid) {
                                     setState(() {
                                       _errorMessage = 'The recovery phrase does not match';
                                     });
                                     return;
                                   }
+
+                                  setState(() {
+                                    _isMnemonicFieldValid = List.generate(12, (_) => true);
+                                    _errorMessage = null;
+                                  });
 
                                   final random = _generateRandomNumber();
                                   final encryptedData = _encryptData({

@@ -1,13 +1,33 @@
-import 'package:flutter/material.dart';
 
-class LockScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Получаем ширину экрана
-    final screenWidth = MediaQuery.of(context).size.width;
+  State<LockScreen> createState() => _LockScreenState();
+}
 
+class _LockScreenState extends State<LockScreen> {
+  final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _unlock() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedPassword = prefs.getString('userPassword');
+
+    if (savedPassword != null && savedPassword == _passwordController.text) {
+      // Если пароль совпадает, всегда переходим на экран кошелька
+      Navigator.pushReplacementNamed(context, '/wallet');
+    } else {
+      // Вы можете показать сообщение об ошибке, если пароль неверен
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Incorrect password')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
@@ -102,10 +122,14 @@ class LockScreen extends StatelessWidget {
                                   ),
                                 ),
                                 child: TextField(
+                                  controller: _passwordController,
+                                  obscureText: true,
                                   decoration: InputDecoration(
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 12, horizontal: 10),
                                     hintText: 'Please enter the password',
-                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                    hintStyle: TextStyle(
+                                        color: Colors.white.withOpacity(0.7)),
                                     filled: true,
                                     fillColor: Colors.transparent,
                                     border: InputBorder.none,
@@ -115,24 +139,26 @@ class LockScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 15),
                               ElevatedButton.icon(
-                                onPressed: () {},
+                                onPressed: _unlock,
                                 label: const Text(
                                   'Unlock',
-                                  style: TextStyle(color: Color(0xFF007AFF)),
+                                  style: TextStyle(color: Color(0xFF007AFF), fontSize: 16),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  side: const BorderSide(color: Color(0xFF007AFF)),
+                                  side: const BorderSide(
+                                      color: Color(0xFF007AFF)),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  minimumSize: Size(double.infinity, 45),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  minimumSize: const Size(double.infinity, 45),
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Center(
-                                child: const Text(
+                              const Center(
+                                child: Text(
                                   'Forget Password?',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -147,13 +173,16 @@ class LockScreen extends StatelessWidget {
                             bottom: 16,
                             right: 5,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 5, bottom: 16),
+                              padding:
+                              const EdgeInsets.only(right: 5, bottom: 16),
                               child: FittedBox(
                                 fit: BoxFit.none,
                                 child: Image.asset(
                                   'assets/images/logo2.png',
-                                  width: screenWidth * 0.4,
-                                  height: screenWidth * 0.4,
+                                  width:
+                                  MediaQuery.of(context).size.width * 0.4,
+                                  height:
+                                  MediaQuery.of(context).size.width * 0.4,
                                   fit: BoxFit.contain,
                                 ),
                               ),

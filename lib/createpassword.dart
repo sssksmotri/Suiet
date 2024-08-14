@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
-import 'next_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bip39/bip39.dart' as bip39;
+import 'wallet_screen.dart';
+class CreatePasswordImport extends StatefulWidget {
+  final String privateKey;
+  final String address;
+  final String portfolioId;
 
-
-class CreateNewScreen extends StatefulWidget {
-  const CreateNewScreen({super.key});
-
+  const CreatePasswordImport({
+    Key? key,
+    required this.privateKey,
+    required this.address,
+    required this.portfolioId,
+  }) : super(key: key);
   @override
   _CreateNewScreenState createState() => _CreateNewScreenState();
 }
 
-class _CreateNewScreenState extends State<CreateNewScreen> {
+class _CreateNewScreenState extends State<CreatePasswordImport> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
@@ -50,14 +55,16 @@ class _CreateNewScreenState extends State<CreateNewScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userPassword', password);
 
-    // Generate 12-word mnemonic
-    final mnemonic = bip39.generateMnemonic();
 
-    // Навигация на следующий экран с передачей мнемонической фразы и пароля
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NextScreen(mnemonic: mnemonic, password: password),
+        builder: (context) => WalletScreen
+          (
+          privateKey: widget.privateKey,
+          address: widget.address,
+          portfolioId: widget.portfolioId,
+        ),
       ),
     );
   }

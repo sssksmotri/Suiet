@@ -486,45 +486,7 @@ class _WalletScreenState extends State<WalletScreen> {
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
                             ),
                             subtitle: const Text(
-                              '35.44 SUI',
-                              style: TextStyle(fontSize: 16, color: Color(0xFF8E8E93)),
-                            ),
-                            trailing: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Text(
-                                  '243.094\$',
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
-                                ),
-                                Text(
-                                  '+2.08%',
-                                  style: TextStyle(fontSize: 14, color: Color(0xFF007AFF)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.transparent,
-                              child: Image.asset(
-                                'assets/images/sui.png',
-                                width: 50,
-                                height: 50,
-                              ),
-                            ),
-                            title: const Text(
-                              'SUI',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
-                            ),
-                            subtitle: const Text(
-                              '35.44 SUI',
+                              '0 SUI',
                               style: TextStyle(fontSize: 16, color: Color(0xFF8E8E93)),
                             ),
                             trailing: Column(
